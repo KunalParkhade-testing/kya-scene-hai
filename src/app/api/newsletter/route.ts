@@ -1,0 +1,3 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+export async function POST(request: Request){const form=await request.formData();const email=String(form.get('email')||'').trim().toLowerCase();if(!email||!email.includes('@'))return NextResponse.redirect(new URL('/?newsletter=error#newsletter',request.url));const supabase=await createClient();const {error}=await supabase.from('newsletter_subscribers').upsert({email},{onConflict:'email'});return NextResponse.redirect(new URL(error?'/?newsletter=error#newsletter':'/?newsletter=success#newsletter',request.url))}
