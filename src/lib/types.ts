@@ -1,0 +1,2 @@
+export type Category = { id:number; slug:string; name:string; description:string|null }
+export type Article = { id:number; slug:string; title:string; dek:string|null; body:string[]; hero_text:string|null; hero_image:string|null; category_id:number|null; status:'draft'|'published'|'archived'; published_at:string|null; reading_minutes:number|null; seo_title:string|null; seo_description:string|null; created_at:string; updated_at:string; categories?: {name:string;slug:string}|null }
