@@ -70,7 +70,7 @@ function serializeHtml(html:string){
    const href=el.getAttribute('href')||''
    return /^https?:\/\//i.test(href)?'['+children+']('+href+')':children
   }
-  if(tag==='mark'||tag==='span'){
+  if(tag==='mark'||tag==='span'||tag==='font'||el.style.backgroundColor||el.hasAttribute('data-highlight')){
    const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
    const rgb=color.toLowerCase().replace(/\s/g,'')
    const colorName=rgb==='#ffe36a'||rgb==='rgb(255,227,106)'?'yellow':
