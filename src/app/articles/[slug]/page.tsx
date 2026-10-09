@@ -6,11 +6,11 @@ import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
 function inlineText(value:string) {
-  const tokenPattern = /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
+  const tokenPattern = /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
   return value.split(tokenPattern).filter(Boolean).map((part,index)=>{
     if(part.startsWith('**')&&part.endsWith('**')) return <strong key={index}>{part.slice(2,-2)}</strong>;
     if(part.startsWith('~~')&&part.endsWith('~~')) return <del key={index}>{part.slice(2,-2)}</del>;
-    if(part.startsWith('==')&&part.endsWith('==')) { const colored=part.match(/^==(yellow|green|blue|pink|orange)\|([\s\S]+)==$/); return <mark key={index} className={colored?'highlight-'+colored[1]:'highlight-yellow'}>{colored?colored[2]:part.slice(2,-2)}</mark>; }
+    if(part.startsWith('==')&&part.endsWith('==')) { const colored=part.match(/^==(yellow|green|blue|pink|orange|red)\|([\s\S]+)==$/); return <mark key={index} className={colored?'highlight-'+colored[1]:'highlight-yellow'}>{colored?colored[2]:part.slice(2,-2)}</mark>; }
     if(part.startsWith('*')&&part.endsWith('*')) return <em key={index}>{part.slice(1,-1)}</em>;
     if(part.startsWith(String.fromCharCode(96))&&part.endsWith(String.fromCharCode(96))) return <code key={index}>{part.slice(1,-1)}</code>;
     const underline=part.match(/^<u>(.*?)<\/u>$/);
