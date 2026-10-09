@@ -9,7 +9,7 @@ function inlineText(value:string) {
   const tokenPattern = /(\*\*.+?\*\*|~~.+?~~|\*[^*\n]+\*|`[^`\n]+`|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
   return value.split(tokenPattern).filter(Boolean).map((part,index)=>{
     if(part.startsWith('**')&&part.endsWith('**')) return <strong key={index}>{part.slice(2,-2)}</strong>;
-    if(part.startsWith('~~')&&part.endsWith('~~')) return <del key={index}>{part.slice(2,-2)}</del>;
+    if(part.startsWith('~~')&&part.endsWith('~~')) return <del key={index}>{part.slice(2,-2)}</del>;\n    if(part.startsWith('==')&&part.endsWith('==')) return <mark key={index}>{part.slice(2,-2)}</mark>;
     if(part.startsWith('*')&&part.endsWith('*')) return <em key={index}>{part.slice(1,-1)}</em>;
     if(part.startsWith('`')&&part.endsWith('`')) return <code key={index}>{part.slice(1,-1)}</code>;
     const underline=part.match(/^<u>(.*?)<\/u>$/);
@@ -19,7 +19,7 @@ function inlineText(value:string) {
     return part;
   });
 }
-function formattedParagraphs(value:string) {
+function headingId(value:string) { return value.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9\\s-]/g,'').trim().replace(/[\\s-]+/g,'-'); }\nfunction formattedParagraphs(value:string) {
   const lines=value.split('\n');
   const output:React.ReactNode[]=[];
   let paragraph:string[]=[];
@@ -75,10 +75,10 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
         {(story.body??[]).map((block:ArticleBlock,i:number)=>{
           if(typeof block==='string') return <div className="formatted-content" key={i}>{formattedParagraphs(block)}</div>;
           if(block.type==='paragraph') return block.text ? <div className="formatted-content" key={i}>{formattedParagraphs(block.text)}</div> : null;
-          if(block.type==='heading') return block.text ? <h2 key={i}>{inlineText(block.text)}</h2> : null;
+          if(block.type==='heading') { const item=toc[headingIndex++]; return block.text ? <h2 id={item?.id} key={i}>{inlineText(block.text)}</h2> : null; }
           if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
           if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
-          if(block.type==='image'&&block.url) return <figure key={i}><img className="articleimage" src={block.url} alt={block.alt||''}/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
+          if(block.type==='image'&&block.url) return <figure key={i}><img className="articleimage" src={block.url} alt={block.alt||''}/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;\n          if(block.type==='source') return null;
           return null;
         })}
       </article>
