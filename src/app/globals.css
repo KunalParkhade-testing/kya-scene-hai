@@ -73,3 +73,15 @@ nav.article-toc ol{min-width:0}
 
 /* Published article highlight colours */
 .prose mark.highlight-red{background:#ffb5ad;color:#6b1717}
+
+
+/* Newsletter signup feedback */
+.newsletterform{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.newsletter-message{margin:0;padding:12px 14px;border:1.5px solid currentColor;font-size:14px;font-weight:800;line-height:1.5}
+.newsletter-success{background:#dcebd4;color:#244820}
+.newsletter-error{background:#ffe1dc;color:#7b2116}
+.inputrow button{cursor:pointer;white-space:nowrap}
+.inputrow button:hover{filter:brightness(.94)}
+.inputrow input:focus-visible,.inputrow button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+@media(max-width:800px){.newsletterform{width:100%}.inputrow{align-items:stretch}.inputrow input{min-width:0;width:100%}}
+@media(max-width:480px){.inputrow{flex-direction:column;align-items:stretch}.inputrow button{width:100%}}
