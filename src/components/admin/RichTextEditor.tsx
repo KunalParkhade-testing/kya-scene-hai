@@ -142,7 +142,7 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
    </div>
    <span className="rich-toolbar-divider"/>
    <div className="rich-toolgroup">
-    <label className="highlight-picker"><span>Highlight</span><select aria-label="Highlight colour" defaultValue="" onMouseDown={e=>e.stopPropagation()} onChange={e=>{if(e.target.value)highlight(e.target.value);e.target.value=''}}><option value="">Colour…</option>{colors.map(c=><option key={c.name} value={c.value}>{c.name}</option>)}</select></label>
+    <div className="highlight-swatches" role="group" aria-label="Highlight colour">{colors.map(c=><button key={c.name} type="button" title={c.name+' highlight'} aria-label={c.name+' highlight'} className="highlight-swatch" style={{'--swatch':c.value} as React.CSSProperties} onMouseDown={e=>e.preventDefault()} onClick={()=>highlight(c.value)}><span/></button>)}</div>
     <button type="button" title="Inline code" onMouseDown={e=>e.preventDefault()} onClick={code}>Code</button>
    </div>
    <span className="rich-toolbar-divider"/>
