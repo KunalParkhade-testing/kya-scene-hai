@@ -65,7 +65,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   if(!story) notFound();
 
   const allBlocks=story.body??[];
-  const sources=allBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='source') as {type:'source';title:string;url:string;publisher?:string;verified?:boolean}[];
+  const sources=allBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='source'&&b.verified&&b.title?.trim()&&b.url?.trim()) as {type:'source';title:string;url:string;publisher?:string;verified?:boolean}[];
   const contentBlocks=allBlocks.filter((b:any)=>!(typeof b==='object'&&b?.type==='source'));
   const headings=contentBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='heading'&&b.text?.trim()) as {type:'heading';text:string}[];
   const headingCounts=new Map<string,number>();
