@@ -8,7 +8,11 @@ type Source={title:string;url:string;publisher:string;verified:boolean}
 type FormatToken={label:string;before:string;after:string;title:string}
 const formats:FormatToken[]=[
  {label:'B',before:'**',after:'**',title:'Bold'},
- {label:'Highlight',before:'==',after:'==',title:'Highlight text'},
+ {label:'Y',before:'==yellow|',after:'==',title:'Yellow highlight'},
+ {label:'G',before:'==green|',after:'==',title:'Green highlight'},
+ {label:'B',before:'==blue|',after:'==',title:'Blue highlight'},
+ {label:'P',before:'==pink|',after:'==',title:'Pink highlight'},
+ {label:'O',before:'==orange|',after:'==',title:'Orange highlight'},
  {label:'I',before:'*',after:'*',title:'Italic'},
  {label:'U',before:'<u>',after:'</u>',title:'Underline'},
  {label:'S',before:'~~',after:'~~',title:'Strikethrough'},
