@@ -6,7 +6,8 @@ import type {Article,Category,ArticleBlock} from '@/lib/types'
 type Block={type:'paragraph'|'heading'|'quote'|'callout'|'image';text:string;url?:string;alt?:string}\ntype Source={title:string;url:string;publisher:string;verified:boolean}
 type FormatToken={label:string;before:string;after:string;title:string}
 const formats:FormatToken[]=[
- {label:'B',before:'**',after:'**',title:'Bold'},\n {label:'Highlight',before:'==',after:'==',title:'Highlight text'},
+ {label:'B',before:'**',after:'**',title:'Bold'},
+ {label:'Highlight',before:'==',after:'==',title:'Highlight text'},
  {label:'I',before:'*',after:'*',title:'Italic'},
  {label:'U',before:'<u>',after:'</u>',title:'Underline'},
  {label:'S',before:'~~',after:'~~',title:'Strikethrough'},
@@ -22,7 +23,9 @@ export default function AdminStudio(){
  useEffect(()=>{load();const {data}=supabase.auth.onAuthStateChange(()=>load());return()=>data.subscription.unsubscribe()},[])
  const admin=user?.app_metadata?.role==='admin'
  async function login(e:React.FormEvent){e.preventDefault();setBusy(true);const {error}=await supabase.auth.signInWithPassword(auth);setMessage(error?.message||'Signed in.');setBusy(false);if(!error)load()}
- function updateBlock(i:number,patch:Partial<Block>){setForm((f:any)=>({...f,body:f.body.map((b:Block,n:number)=>n===i?{...b,...patch}:b)}))}\n function updateSource(i:number,patch:Partial<Source>){setForm((f:any)=>({...f,sources:f.sources.map((s:Source,n:number)=>n===i?{...s,...patch}:s)}))}\n function addSource(){setForm((f:any)=>({...f,sources:[...f.sources,{title:'',url:'',publisher:'',verified:false}]}))}\n function removeSource(i:number){setForm((f:any)=>({...f,sources:f.sources.filter((_:Source,n:number)=>n!==i)}))}
+ function updateBlock(i:number,patch:Partial<Block>){setForm((f:any)=>({...f,body:f.body.map((b:Block,n:number)=>n===i?{...b,...patch}:b)}))}
+ function updateSource(i:number,patch:Partial<Source>){setForm((f:any)=>({...f,sources:f.sources.map((s:Source,n:number)=>n===i?{...s,...patch}:s)}))}\n function addSource(){setForm((f:any)=>({...f,sources:[...f.sources,{title:'',url:'',publisher:'',verified:false}]}))}
+ function removeSource(i:number){setForm((f:any)=>({...f,sources:f.sources.filter((_:Source,n:number)=>n!==i)}))}
  function addBlock(type:Block['type'],afterIndex=form.body.length-1){setForm((f:any)=>({...f,body:[...f.body.slice(0,afterIndex+1),{type,text:'',...(type==='image'?{url:'',alt:''}:{})},...f.body.slice(afterIndex+1)]}));setMessage('')}
  function removeBlock(i:number){setForm((f:any)=>({...f,body:f.body.filter((_:Block,n:number)=>n!==i)}))}
  function formatBlock(i:number,token:FormatToken){const el=textRefs.current[i];const block=form.body[i];if(!el||!block)return;const start=el.selectionStart??block.text.length;const end=el.selectionEnd??start;const selected=block.text.slice(start,end);const replacement=token.before+(selected||'text')+token.after;const next=block.text.slice(0,start)+replacement+block.text.slice(end);updateBlock(i,{text:next});requestAnimationFrame(()=>{el.focus();const a=start+token.before.length;el.setSelectionRange(a,a+(selected||'text').length)})}
