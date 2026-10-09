@@ -94,7 +94,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
           if(typeof block==='string') return <div className="formatted-content" key={i}>{formattedParagraphs(block)}</div>;
           if(block.type==='paragraph') return block.text ? <div className="formatted-content" key={i}>{formattedParagraphs(block.text)}</div> : null;
           if(block.type==='heading') {
-            const item=toc[headingIndex++];
+            const item=block.text?.trim()?toc[headingIndex++]:undefined;
             return block.text ? <h2 id={item?.id} key={i}>{inlineText(block.text)}</h2> : null;
           }
           if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
