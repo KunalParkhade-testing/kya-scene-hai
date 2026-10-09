@@ -65,3 +65,8 @@ nav.article-toc ol{min-width:0}
 .rich-editable mark[data-highlight="red"]{background:#ffb5ad;color:#6b1717}
 .rich-editable code{background:#eee8dc;padding:2px 4px;border-radius:3px;font-family:ui-monospace,monospace}
 @media(max-width:760px){nav.article-toc{grid-template-columns:1fr;gap:12px;padding:22px}nav.article-toc h2{margin:0}nav.article-toc ol{grid-template-columns:1fr;gap:10px}.rich-toolbar{gap:5px;padding:6px}.rich-toolbar-divider{display:none}.rich-toolbar button,.highlight-picker{min-height:34px;padding:6px 8px}.rich-editable{min-height:125px;padding:12px}}
+
+.highlight-swatches{display:flex;align-items:center;gap:5px;padding:0 3px}
+.rich-toolbar .highlight-swatch{width:25px;min-width:25px;height:25px;min-height:25px;padding:3px;border-radius:50%;background:#fff}
+.highlight-swatch span{display:block;width:100%;height:100%;border-radius:50%;background:var(--swatch);border:1px solid rgba(0,0,0,.22)}
+.rich-toolbar .highlight-swatch:hover{transform:scale(1.08);background:#fff}
