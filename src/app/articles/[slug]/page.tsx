@@ -19,12 +19,17 @@ function inlineText(value:string) {
     return part;
   });
 }
-function formattedText(value:string) {
+function formattedParagraphs(value:string) {
   const lines=value.split('\n');
   const output:React.ReactNode[]=[];
+  let paragraph:string[]=[];
   let listType:'ul'|'ol'|null=null;
   let listItems:React.ReactNode[]=[];
-  const flush=()=>{
+  const flushParagraph=()=>{
+    if(paragraph.length) output.push(<p key={`p-${output.length}`}>{paragraph.map((line,i)=><span key={i}>{i>0?<br/>:null}{inlineText(line)}</span>)}</p>);
+    paragraph=[];
+  };
+  const flushList=()=>{
     if(!listType||!listItems.length)return;
     output.push(listType==='ul'?<ul key={`ul-${output.length}`}>{listItems}</ul>:<ol key={`ol-${output.length}`}>{listItems}</ol>);
     listType=null;listItems=[];
@@ -34,16 +39,17 @@ function formattedText(value:string) {
     const numbered=line.match(/^\s*\d+[.)]\s+(.+)$/);
     const type=bullet?'ul':numbered?'ol':null;
     if(type){
-      if(listType&&listType!==type)flush();
+      flushParagraph();
+      if(listType&&listType!==type)flushList();
       listType=type;
       listItems.push(<li key={index}>{inlineText((bullet||numbered)![1])}</li>);
     }else{
-      flush();
-      if(line.trim())output.push(<span key={index}>{index>0?<br/>:null}{inlineText(line)}</span>);
-      else if(index>0)output.push(<br key={`br-${index}`}/>);
+      flushList();
+      if(line.trim())paragraph.push(line);
+      else flushParagraph();
     }
   });
-  flush();
+  flushList();flushParagraph();
   return output;
 }
 
@@ -67,11 +73,11 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
       <article className="prose">
         {(story.body??[]).map((block:ArticleBlock,i:number)=>{
-          if(typeof block==='string') return <p key={i}>{formattedText(block)}</p>;
-          if(block.type==='paragraph') return block.text ? <p key={i}>{formattedText(block.text)}</p> : null;
+          if(typeof block==='string') return <div className="formatted-content" key={i}>{formattedParagraphs(block)}</div>;
+          if(block.type==='paragraph') return block.text ? <div className="formatted-content" key={i}>{formattedParagraphs(block.text)}</div> : null;
           if(block.type==='heading') return block.text ? <h2 key={i}>{inlineText(block.text)}</h2> : null;
-          if(block.type==='quote') return block.text ? <blockquote key={i}>{formattedText(block.text)}</blockquote> : null;
-          if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{formattedText(block.text)}</div> : null;
+          if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
+          if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
           if(block.type==='image'&&block.url) return <figure key={i}><img className="articleimage" src={block.url} alt={block.alt||''}/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
           return null;
         })}
