@@ -24,3 +24,17 @@
 .verify-check{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:800;margin-top:12px}
 .verify-check input{width:auto!important;margin:0!important}
 @media(max-width:650px){.article-toc{padding:18px}.article-toc ol{grid-template-columns:1fr;gap:9px}.article-sources{padding:20px}}
+
+/* Article contents: balanced spacing and readable two-column rhythm */
+.article-toc{padding:26px 32px;margin:32px 0 44px;display:grid;grid-template-columns:minmax(190px,.75fr) minmax(0,2fr);column-gap:30px;align-items:start}
+.article-toc h2{margin:8px 0 0;line-height:1.25}
+.article-toc ol{padding:0;margin:0;list-style-position:inside;column-gap:24px;row-gap:13px}
+.article-toc li{min-width:0;line-height:1.35;padding:0 0 2px;overflow-wrap:anywhere}
+.article-toc a{display:inline;text-decoration-thickness:2px;text-underline-offset:4px}
+.prose mark{border-radius:2px;padding:.06em .16em}
+.prose mark.highlight-yellow{background:#ffe36a;color:#171717}
+.prose mark.highlight-green{background:#bce8c4;color:#173b22}
+.prose mark.highlight-blue{background:#c7dcff;color:#15366e}
+.prose mark.highlight-pink{background:#ffc7df;color:#702044}
+.prose mark.highlight-orange{background:#ffd0a3;color:#71370e}
+@media(max-width:760px){.article-toc{grid-template-columns:1fr;gap:12px;padding:22px}.article-toc h2{margin:0}.article-toc ol{grid-template-columns:1fr;gap:10px}.article-toc li{line-height:1.45}}
