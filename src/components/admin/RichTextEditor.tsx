@@ -1,288 +1,144 @@
 'use client'
 
-import {useEffect,useRef} from 'react'
+import { useEffect, useMemo } from 'react'
+import { EditorContent, useEditor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import Highlight from '@tiptap/extension-highlight'
 
-type Props={value:string;onChange:(value:string)=>void;placeholder?:string}
-
-
+type Props = { value: string; onChange: (value: string) => void; placeholder?: string }
+const PREFIX = '__TIPTAP_JSON__:'
 const colors = [
-  { name: 'Yellow', value: '#ffe36a', className: 'swatch-yellow' },
-  { name: 'Green', value: '#bce8c4', className: 'swatch-green' },
-  { name: 'Blue', value: '#c7dcff', className: 'swatch-blue' },
-  { name: 'Pink', value: '#ffc7df', className: 'swatch-pink' },
-  { name: 'Orange', value: '#ffd0a3', className: 'swatch-orange' },
-  { name: 'Red', value: '#ffb5ad', className: 'swatch-red' },
+  { name: 'Yellow', value: '#ffe36a' },
+  { name: 'Green', value: '#bce8c4' },
+  { name: 'Blue', value: '#c7dcff' },
+  { name: 'Pink', value: '#ffc7df' },
+  { name: 'Orange', value: '#ffd0a3' },
+  { name: 'Red', value: '#ffb5ad' },
 ]
+const colorNames: Record<string, string> = Object.fromEntries(colors.map(c => [c.value, c.name.toLowerCase()]))
 
-function escapeHtml(value:string){
- return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
-function inlineHtml(value:string){
- let s=escapeHtml(value)
- s=s.replace(/==(yellow|green|blue|pink|orange|red)\|([\s\S]+?)==/g,(_,color,text)=>'<mark data-highlight="'+color+'">'+text+'</mark>')
- s=s.replace(/==([\s\S]+?)==/g,'<mark data-highlight="yellow">$1</mark>')
- s=s.replace(/\*\*([\s\S]+?)\*\*/g,'<strong>$1</strong>')
- s=s.replace(/~~([\s\S]+?)~~/g,'<del>$1</del>')
- s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
- s=s.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g,'<u>$1</u>')
- s=s.replace(/\x60([^\x60\n]+)\x60/g,'<code>$1</code>')
- s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noreferrer">$1</a>')
- return s
+function legacyInline(value: string) {
+  let s = escapeHtml(value)
+  s = s.replace(/==(yellow|green|blue|pink|orange|red)\|([\s\S]+?)==/g, (_, color, text) => '<mark data-color="' + color + '">' + text + '</mark>')
+  s = s.replace(/==([\s\S]+?)==/g, '<mark data-color="yellow">$1</mark>')
+  s = s.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/~~([\s\S]+?)~~/g, '<s>$1</s>')
+  s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+  s = s.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>')
+  s = s.replace(/\x60([^\x60\n]+)\x60/g, '<code>$1</code>')
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+  return s
 }
-function markdownToHtml(value:string){
- const lines=value.split('\n')
- const out:string[]=[]
- let list:'ul'|'ol'|null=null
- let items:string[]=[]
- const flush=()=>{
-  if(list&&items.length)out.push('<'+list+'>'+items.join('')+'</'+list+'>')
-  list=null;items=[]
- }
- for(const line of lines){
-  const bullet=line.match(/^\s*[•*-]\s+(.+)$/)
-  const numbered=line.match(/^\s*\d+[.)]\s+(.+)$/)
-  const type=bullet?'ul':numbered?'ol':null
-  if(type){
-   if(list&&list!==type)flush()
-   list=type
-   items.push('<li>'+inlineHtml((bullet||numbered)![1])+'</li>')
-  }else{
-   flush()
-   if(line.trim())out.push('<p>'+inlineHtml(line)+'</p>')
-  }
- }
- flush()
- return out.join('')
+function legacyHtml(value: string) {
+  return value.split('\n').map(line => {
+    const bullet = line.match(/^\s*[•*-]\s+(.+)$/)
+    const numbered = line.match(/^\s*\d+[.)]\s+(.+)$/)
+    if (bullet) return '<ul><li>' + legacyInline(bullet[1]) + '</li></ul>'
+    if (numbered) return '<ol><li>' + legacyInline(numbered[1]) + '</li></ol>'
+    return line.trim() ? '<p>' + legacyInline(line) + '</p>' : '<p></p>'
+  }).join('')
 }
-function serializeHtml(html:string){
- const doc=new DOMParser().parseFromString(html,'text/html')
- const nodeText=(node:Node):string=>{
-  if(node.nodeType===Node.TEXT_NODE)return node.textContent||''
-  if(node.nodeType!==Node.ELEMENT_NODE)return ''
-  const el=node as HTMLElement
-  const children=Array.from(el.childNodes).map(nodeText).join('')
-  const tag=el.tagName.toLowerCase()
-  if(tag==='br')return '\n'
-  if(tag==='strong'||tag==='b')return '**'+children+'**'
-  if(tag==='em'||tag==='i')return '*'+children+'*'
-  if(tag==='u')return '<u>'+children+'</u>'
-  if(tag==='del'||tag==='s'||tag==='strike')return '~~'+children+'~~'
-  if(tag==='code')return String.fromCharCode(96)+children+String.fromCharCode(96)
-  if(tag==='a'){
-   const href=el.getAttribute('href')||''
-   return /^https?:\/\//i.test(href)?'['+children+']('+href+')':children
+function readValue(value: string) {
+  if (value.startsWith(PREFIX)) {
+    try { return JSON.parse(value.slice(PREFIX.length)) } catch { /* fall through to legacy text */ }
   }
-
-  // Serialize highlight and text-decoration/font styles independently so
-  // marks remain cumulative when a browser emits styled <span> elements.
-  let result = children
-  if(tag==='mark'||el.hasAttribute('data-highlight')||el.style.backgroundColor){
-   const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
-   const normalizedColor = color.toLowerCase().replace(/\s/g, '')
-   const colorMap: Record<string, string> = {
-    yellow: 'yellow',
-    '#ffe36a': 'yellow',
-    'rgb(255,227,106)': 'yellow',
-    green: 'green',
-    '#bce8c4': 'green',
-    'rgb(188,232,196)': 'green',
-    blue: 'blue',
-    '#c7dcff': 'blue',
-    'rgb(199,220,255)': 'blue',
-    pink: 'pink',
-    '#ffc7df': 'pink',
-    'rgb(255,199,223)': 'pink',
-    orange: 'orange',
-    '#ffd0a3': 'orange',
-    'rgb(255,208,163)': 'orange',
-    red: 'red',
-    '#ffb5ad': 'red',
-    'rgb(255,181,173)': 'red',
-   }
-   const colorName = colorMap[normalizedColor] ?? (tag === 'mark' && !normalizedColor ? 'yellow' : null)
-   if (colorName) result = '=='+colorName+'|'+result+'=='
-  }
-
-  const decoration = (el.style.textDecorationLine || el.style.textDecoration || '').toLowerCase()
-  if(tag==='span'||tag==='font'){
-   if(decoration.includes('underline')) result = '<u>'+result+'</u>'
-   if(el.style.fontStyle.toLowerCase()==='italic') result = '*'+result+'*'
-   const weight = el.style.fontWeight.toLowerCase()
-   if(weight==='bold'||(Number(weight)>=600)) result = '**'+result+'**'
-  }
-  if(tag==='ul')return Array.from(el.children).map(li=>'• '+nodeText(li)).join('\n')+'\n'
-  if(tag==='ol')return Array.from(el.children).map((li,i)=>(i+1)+'. '+nodeText(li)).join('\n')+'\n'
-  if(tag==='p'||tag==='div')return result+'\n'
-  return result
- }
- return Array.from(doc.body.childNodes).map(nodeText).join('').replace(/\n{3,}/g,'\n\n').replace(/\n+$/,'')
+  return legacyHtml(value)
 }
-export default function RichTextEditor({value,onChange,placeholder='Write your text…'}:Props){
- const editor=useRef<HTMLDivElement>(null)
- const lastValue=useRef<string|null>(null)
- useEffect(()=>{
-  const el=editor.current
-  if(!el)return
-  if(lastValue.current!==value){
-   el.innerHTML=markdownToHtml(value)
-   lastValue.current=value
-  }
- },[value])
- function sync(){
-  const el=editor.current
-  if(!el)return
-  const next=serializeHtml(el.innerHTML)
-  lastValue.current=next
-  onChange(next)
- }
- function command(cmd:string,arg?:string){
-  editor.current?.focus()
-  document.execCommand(cmd,false,arg)
-  sync()
- }
-
-
-
- function highlight(color: string) {
-  const root = editor.current
-  const selection = window.getSelection()
-
-  if (!root || !selection || selection.rangeCount === 0) return
-
-  const range = selection.getRangeAt(0)
-  if (range.collapsed || !root.contains(range.commonAncestorContainer)) return
-
-  const colorNames: Record<string, string> = {
-    '#ffe36a': 'yellow',
-    '#bce8c4': 'green',
-    '#c7dcff': 'blue',
-    '#ffc7df': 'pink',
-    '#ffd0a3': 'orange',
-    '#ffb5ad': 'red',
-  }
-
-  const colorName = colorNames[color.toLowerCase()]
-  if (!colorName) return
-
-  // Inspect the original DOM, not only cloneContents(): a partial selection
-  // inside a <mark> does not necessarily include that mark in the clone.
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  const selectedTextNodes: Text[] = []
-  let allSelectedTextHasColor = true
-  let node: Node | null
-
-  while ((node = walker.nextNode())) {
-    const textNode = node as Text
-    if (!textNode.textContent) continue
-
-    // intersectsNode handles partial text selections and avoids fragile
-    // boundary-point comparisons between independently created ranges.
-    if (!range.intersectsNode(textNode)) continue
-
-    selectedTextNodes.push(textNode)
-    const effectiveMark = textNode.parentElement?.closest('mark')
-    if (effectiveMark?.getAttribute('data-highlight') !== colorName) {
-      allSelectedTextHasColor = false
-    }
-  }
-
-  if (!selectedTextNodes.length) return
-
-  // Extract only the selection, then unwrap old highlight elements while
-  // retaining their child formatting.
-  const fragment = range.extractContents()
-  fragment.querySelectorAll('mark').forEach(mark => {
-    const parent = mark.parentNode
-    if (!parent) return
-
-    while (mark.firstChild) {
-      parent.insertBefore(mark.firstChild, mark)
-    }
-    parent.removeChild(mark)
+export default function RichTextEditor({ value, onChange, placeholder = 'Write your text…' }: Props) {
+  const extensions = useMemo(() => [
+    StarterKit,
+    Underline,
+    Highlight.configure({
+      multicolor: true,
+      HTMLAttributes: { class: 'editor-highlight' },
+    }).extend({
+      addAttributes() {
+        return {
+          color: {
+            default: null,
+            parseHTML: element => element.getAttribute('data-color') || element.getAttribute('data-highlight') || element.style.backgroundColor || null,
+            renderHTML: attributes => {
+              const raw = typeof attributes.color === 'string' ? attributes.color : ''
+              const color = colorNames[raw.toLowerCase()] || raw.toLowerCase()
+              return color ? { 'data-color': color, style: raw.startsWith('#') ? 'background-color: ' + raw : undefined } : {}
+            },
+          },
+        }
+      },
+    }),
+  ], [])
+  const editor = useEditor({
+    extensions,
+    content: readValue(value),
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: 'rich-editable',
+        role: 'textbox',
+        'aria-multiline': 'true',
+        'data-placeholder': placeholder,
+      },
+      transformPastedText: text => text,
+    },
+    onUpdate: ({ editor: current }) => {
+      onChange(PREFIX + JSON.stringify(current.getJSON()))
+    },
   })
 
-  if (!allSelectedTextHasColor) {
-    // Apply marks to text nodes individually; never wrap a block element in
-    // <mark>, which can produce invalid nested paragraph/list markup.
-    const fragmentWalker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT)
-    const textNodes: Text[] = []
-    let fragmentNode: Node | null
-
-    while ((fragmentNode = fragmentWalker.nextNode())) {
-      if (fragmentNode.textContent) textNodes.push(fragmentNode as Text)
+  useEffect(() => {
+    if (!editor) return
+    const current = editor.getJSON()
+    const serialized = PREFIX + JSON.stringify(current)
+    if (value.startsWith(PREFIX) && value === serialized) return
+    // Parent changes and article switches should update the editor, but never
+    // replace the active document with its own last emitted value.
+    const incoming = readValue(value)
+    const currentText = editor.getText()
+    const incomingText = typeof incoming === 'string' ? incoming : ''
+    if (value.startsWith(PREFIX)) {
+      if (JSON.stringify(current) !== value.slice(PREFIX.length)) {
+        try {
+          const parsed = JSON.parse(value.slice(PREFIX.length))
+          if (JSON.stringify(parsed) !== JSON.stringify(current)) editor.commands.setContent(parsed, { emitUpdate: false })
+        } catch { /* keep current document if a stored value is malformed */ }
+      }
+    } else if (currentText !== incomingText && !editor.isFocused) {
+      editor.commands.setContent(incoming, { emitUpdate: false })
     }
+  }, [editor, value])
 
-    textNodes.forEach(textNode => {
-      const parent = textNode.parentNode
-      if (!parent) return
+  const command = (action: () => void) => { if (editor) { action(); editor.commands.focus() } }
+  const toggleHighlight = (color: string) => command(() => {
+    if (!editor) return
+    const active = editor.isActive('highlight', { color })
+    if (active) editor.chain().focus().unsetHighlight().run()
+    else editor.chain().focus().setHighlight({ color }).run()
+  })
 
-      const mark = document.createElement('mark')
-      mark.setAttribute('data-highlight', colorName)
-      parent.insertBefore(mark, textNode)
-      mark.appendChild(textNode)
-    })
-  }
-
-  range.insertNode(fragment)
-  root.normalize()
-  selection.removeAllRanges()
-  sync()
- }
-
- function code(){
-  const selection=window.getSelection()
-  if(!selection||selection.rangeCount===0||selection.isCollapsed)return
-  const range=selection.getRangeAt(0)
-  const el=document.createElement('code')
-  try{range.surroundContents(el)}catch{
-   el.appendChild(range.extractContents());range.insertNode(el)
-  }
-  selection.removeAllRanges()
-  const next=document.createRange();next.selectNodeContents(el);selection.addRange(next)
-  sync()
- }
- function link(){
-  const url=window.prompt('Paste the full https:// link')
-  if(url&&/^https?:\/\//i.test(url))command('createLink',url)
- }
- return <div className="rich-editor">
-  <div className="rich-toolbar" role="toolbar" aria-label="Text formatting">
-   <div className="rich-toolgroup">
-    <button type="button" title="Bold" aria-label="Bold" onMouseDown={e=>e.preventDefault()} onClick={()=>command('bold')}><strong>B</strong></button>
-    <button type="button" title="Italic" aria-label="Italic" onMouseDown={e=>e.preventDefault()} onClick={()=>command('italic')}><em>I</em></button>
-    <button type="button" title="Underline" aria-label="Underline" onMouseDown={e=>e.preventDefault()} onClick={()=>command('underline')}><u>U</u></button>
-    <button type="button" title="Strikethrough" aria-label="Strikethrough" onMouseDown={e=>e.preventDefault()} onClick={()=>command('strikeThrough')}><s>S</s></button>
-   </div>
-   <span className="rich-toolbar-divider"/>
-   <div className="rich-toolgroup">
-    <div className="highlight-swatches" role="group" aria-label="Highlight colour">
-    {colors.map(c => (
-        <button
-        key={c.name}
-        type="button"
-        title={c.name + ' highlight'}
-        aria-label={c.name + ' highlight'}
-        className={`highlight-swatch ${c.className}`}
-        onMouseDown={e => {
-          // Apply before the browser can move focus away from the editable
-          // selection. Some browsers collapse contentEditable selections on click.
-          e.preventDefault()
-          highlight(c.value)
-        }}
-        >
-        <span />
-        </button>
-    ))}
+  return <div className="rich-editor">
+    <div className="rich-toolbar" role="toolbar" aria-label="Text formatting">
+      <div className="rich-toolgroup">
+        <button type="button" title="Bold" aria-label="Bold" aria-pressed={!!editor?.isActive('bold')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleBold().run())}><strong>B</strong></button>
+        <button type="button" title="Italic" aria-label="Italic" aria-pressed={!!editor?.isActive('italic')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleItalic().run())}><em>I</em></button>
+        <button type="button" title="Underline" aria-label="Underline" aria-pressed={!!editor?.isActive('underline')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleUnderline().run())}><u>U</u></button>
+        <button type="button" title="Strikethrough" aria-label="Strikethrough" aria-pressed={!!editor?.isActive('strike')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleStrike().run())}><s>S</s></button>
+      </div>
+      <span className="rich-toolbar-divider" />
+      <div className="rich-toolgroup highlight-swatches" role="group" aria-label="Highlight colour">
+        {colors.map(c => <button key={c.name} type="button" title={c.name + ' highlight (click again to remove)'} aria-label={c.name + ' highlight'} aria-pressed={!!editor?.isActive('highlight', { color: c.value })} className="highlight-swatch" onMouseDown={e => e.preventDefault()} onClick={() => toggleHighlight(c.value)}><span style={{ backgroundColor: c.value }} /></button>)}
+        <button type="button" title="Remove highlight" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().unsetHighlight().run())}>Clear</button>
+      </div>
+      <span className="rich-toolbar-divider" />
+      <div className="rich-toolgroup">
+        <button type="button" title="Bulleted list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleBulletList().run())}>• List</button>
+        <button type="button" title="Numbered list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleOrderedList().run())}>1. List</button>
+        <button type="button" title="Inline code" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Code</button>
+      </div>
     </div>
-    <button type="button" title="Inline code" onMouseDown={e=>e.preventDefault()} onClick={code}>Code</button>
-   </div>
-   <span className="rich-toolbar-divider"/>
-   <div className="rich-toolgroup">
-    <button type="button" title="Insert link" onMouseDown={e=>e.preventDefault()} onClick={link}>Link</button>
-    <button type="button" title="Bulleted list" onMouseDown={e=>e.preventDefault()} onClick={()=>command('insertUnorderedList')}>• List</button>
-    <button type="button" title="Numbered list" onMouseDown={e=>e.preventDefault()} onClick={()=>command('insertOrderedList')}>1. List</button>
-   </div>
+    <EditorContent editor={editor} />
   </div>
-  <div ref={editor} className="rich-editable" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-placeholder={placeholder} onInput={sync} onPaste={e=>{e.preventDefault();const text=e.clipboardData.getData('text/plain');document.execCommand('insertText',false,text)}}/>
- </div>
 }
