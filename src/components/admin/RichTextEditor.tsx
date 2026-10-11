@@ -5,6 +5,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
+import Link from '@tiptap/extension-link'
 
 type Props = { value: string; onChange: (value: string) => void; placeholder?: string }
 const PREFIX = '__TIPTAP_JSON__:'
@@ -52,6 +53,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
   const extensions = useMemo(() => [
     StarterKit,
     Underline,
+    Link.configure({ openOnClick: false, autolink: false }),
     Highlight.configure({
       multicolor: true,
       HTMLAttributes: { class: 'editor-highlight' },
@@ -112,6 +114,10 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
   }, [editor, value])
 
   const command = (action: () => void) => { if (editor) { action(); editor.commands.focus() } }
+  const setLink = () => {
+    const url = window.prompt('Paste the full https:// link')
+    if (url && /^https?:\/\//i.test(url)) editor?.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank', rel: 'noreferrer' }).run()
+  }
   const toggleHighlight = (color: string) => command(() => {
     if (!editor) return
     const active = editor.isActive('highlight', { color })
@@ -136,6 +142,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
       <div className="rich-toolgroup">
         <button type="button" title="Bulleted list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleBulletList().run())}>• List</button>
         <button type="button" title="Numbered list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleOrderedList().run())}>1. List</button>
+        <button type="button" title="Insert link" onMouseDown={e => e.preventDefault()} onClick={setLink}>Link</button>
         <button type="button" title="Inline code" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Code</button>
       </div>
     </div>
