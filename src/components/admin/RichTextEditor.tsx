@@ -70,7 +70,7 @@ function serializeHtml(html:string){
   if(tag==='code')return String.fromCharCode(96)+children+String.fromCharCode(96)
   if(tag==='a'){
    const href=el.getAttribute('href')||''
-   return /^https?:\\/\\//i.test(href)?'['+children+']('+href+')':children
+   return /^https?:\/\//i.test(href)?'['+children+']('+href+')':children
   }
 
   // Serialize highlight and text-decoration/font styles independently so
@@ -78,7 +78,7 @@ function serializeHtml(html:string){
   let result = children
   if(tag==='mark'||el.hasAttribute('data-highlight')||el.style.backgroundColor){
    const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
-   const normalizedColor = color.toLowerCase().replace(/\\s/g, '')
+   const normalizedColor = color.toLowerCase().replace(/\s/g, '')
    const colorMap: Record<string, string> = {
     yellow: 'yellow',
     '#ffe36a': 'yellow',
