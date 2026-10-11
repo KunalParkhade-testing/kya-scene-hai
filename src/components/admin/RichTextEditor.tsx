@@ -74,8 +74,6 @@ function serializeHtml(html:string){
   }
   if(tag==='mark'||tag==='span'||tag==='font'||el.style.backgroundColor||el.hasAttribute('data-highlight')){
    const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
-   const rgb=color.toLowerCase().replace(/\s/g,'')
-
    const normalizedColor = color.toLowerCase().replace(/\s/g, '')
 
    const colorMap: Record<string, string> = {
@@ -104,7 +102,10 @@ function serializeHtml(html:string){
     'rgb(255,181,173)': 'red',
     }
 
-   const colorName = colorMap[normalizedColor] ?? 'yellow'
+   const colorName = colorMap[normalizedColor] ?? (tag === 'mark' && !normalizedColor ? 'yellow' : null)
+
+   // Preserve the content rather than silently converting an unknown color to yellow.
+   if (!colorName) return children
 
    return '=='+colorName+'|'+children+'=='
   }
@@ -162,26 +163,28 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
   const colorName = colorNames[color.toLowerCase()]
   if (!colorName) return
 
-  // Inspect only the content inside the current selection.
+  // Determine the effective highlight for every selected text node.
+  // Looking at text nodes avoids double-counting nested <mark> elements.
   const preview = range.cloneContents()
-  const totalText = preview.textContent ?? ''
-  if (!totalText) return
+  const previewWalker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT)
+  let hasText = false
+  let sameColor = true
+  let previewNode: Node | null
 
-  const marks = Array.from(preview.querySelectorAll('mark'))
-  const markedTextLength = marks.reduce(
-    (sum, mark) => sum + (mark.textContent?.length ?? 0),
-    0
-  )
+  while ((previewNode = previewWalker.nextNode())) {
+    if (!previewNode.textContent) continue
+    hasText = true
+    const effectiveMark = (previewNode.parentElement as HTMLElement | null)?.closest('mark')
+    if (effectiveMark?.getAttribute('data-highlight') !== colorName) {
+      sameColor = false
+    }
+  }
 
-  const sameColor =
-    marks.length > 0 &&
-    marks.every(mark => mark.getAttribute('data-highlight') === colorName) &&
-    markedTextLength === totalText.length
+  if (!hasText) return
 
-  // Extract the exact selection, then remove any old highlight wrappers
-  // from the extracted fragment without removing its inner formatting.
+  // Extract the exact selection. Unwrap old highlights while keeping nested
+  // formatting such as <strong>, <em>, links, and code intact.
   const fragment = range.extractContents()
-
   fragment.querySelectorAll('mark').forEach(mark => {
     const parent = mark.parentNode
     if (!parent) return
@@ -192,17 +195,29 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
     parent.removeChild(mark)
   })
 
-  if (sameColor) {
-    // Clicking the active colour again removes the highlight.
-    range.insertNode(fragment)
-  } else {
-    // One new wrapper replaces the old colour.
-    const mark = document.createElement('mark')
-    mark.setAttribute('data-highlight', colorName)
-    mark.appendChild(fragment)
-    range.insertNode(mark)
+  if (!sameColor) {
+    // Highlight text nodes individually so selections spanning paragraphs or
+    // list items do not create invalid <mark> wrappers around block elements.
+    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT)
+    const textNodes: Text[] = []
+    let node: Node | null
+
+    while ((node = walker.nextNode())) {
+      if (node.textContent) textNodes.push(node as Text)
+    }
+
+    textNodes.forEach(textNode => {
+      const parent = textNode.parentNode
+      if (!parent) return
+
+      const mark = document.createElement('mark')
+      mark.setAttribute('data-highlight', colorName)
+      parent.insertBefore(mark, textNode)
+      mark.appendChild(textNode)
+    })
   }
 
+  range.insertNode(fragment)
   root.normalize()
   selection.removeAllRanges()
   sync()
