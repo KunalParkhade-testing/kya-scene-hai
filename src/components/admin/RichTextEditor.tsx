@@ -70,44 +70,45 @@ function serializeHtml(html:string){
   if(tag==='code')return String.fromCharCode(96)+children+String.fromCharCode(96)
   if(tag==='a'){
    const href=el.getAttribute('href')||''
-   return /^https?:\/\//i.test(href)?'['+children+']('+href+')':children
+   return /^https?:\\/\\//i.test(href)?'['+children+']('+href+')':children
   }
-  if(tag==='mark'||tag==='span'||tag==='font'||el.style.backgroundColor||el.hasAttribute('data-highlight')){
-   const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
-   const normalizedColor = color.toLowerCase().replace(/\s/g, '')
 
+  // Serialize highlight and text-decoration/font styles independently so
+  // marks remain cumulative when a browser emits styled <span> elements.
+  let result = children
+  if(tag==='mark'||el.hasAttribute('data-highlight')||el.style.backgroundColor){
+   const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
+   const normalizedColor = color.toLowerCase().replace(/\\s/g, '')
    const colorMap: Record<string, string> = {
     yellow: 'yellow',
     '#ffe36a': 'yellow',
     'rgb(255,227,106)': 'yellow',
-
     green: 'green',
     '#bce8c4': 'green',
     'rgb(188,232,196)': 'green',
-
     blue: 'blue',
     '#c7dcff': 'blue',
     'rgb(199,220,255)': 'blue',
-
     pink: 'pink',
     '#ffc7df': 'pink',
     'rgb(255,199,223)': 'pink',
-
     orange: 'orange',
     '#ffd0a3': 'orange',
     'rgb(255,208,163)': 'orange',
-
     red: 'red',
     '#ffb5ad': 'red',
     'rgb(255,181,173)': 'red',
-    }
-
+   }
    const colorName = colorMap[normalizedColor] ?? (tag === 'mark' && !normalizedColor ? 'yellow' : null)
+   if (colorName) result = '=='+colorName+'|'+result+'=='
+  }
 
-   // Preserve the content rather than silently converting an unknown color to yellow.
-   if (!colorName) return children
-
-   return '=='+colorName+'|'+children+'=='
+  const decoration = (el.style.textDecorationLine || el.style.textDecoration || '').toLowerCase()
+  if(tag==='span'||tag==='font'){
+   if(decoration.includes('underline')) result = '<u>'+result+'</u>'
+   if(el.style.fontStyle.toLowerCase()==='italic') result = '*'+result+'*'
+   const weight = el.style.fontWeight.toLowerCase()
+   if(weight==='bold'||(Number(weight)>=600)) result = '**'+result+'**'
   }
   if(tag==='ul')return Array.from(el.children).map(li=>'• '+nodeText(li)).join('\n')+'\n'
   if(tag==='ol')return Array.from(el.children).map((li,i)=>(i+1)+'. '+nodeText(li)).join('\n')+'\n'
@@ -174,15 +175,9 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
     const textNode = node as Text
     if (!textNode.textContent) continue
 
-    const textRange = document.createRange()
-    textRange.selectNodeContents(textNode)
-
-    const startsBeforeNodeEnd =
-      range.compareBoundaryPoints(Range.START_TO_END, textRange) < 0
-    const endsAfterNodeStart =
-      range.compareBoundaryPoints(Range.END_TO_START, textRange) > 0
-
-    if (!startsBeforeNodeEnd || !endsAfterNodeStart) continue
+    // intersectsNode handles partial text selections and avoids fragile
+    // boundary-point comparisons between independently created ranges.
+    if (!range.intersectsNode(textNode)) continue
 
     selectedTextNodes.push(textNode)
     const effectiveMark = textNode.parentElement?.closest('mark')
