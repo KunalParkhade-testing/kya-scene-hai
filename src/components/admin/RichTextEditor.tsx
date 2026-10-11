@@ -263,8 +263,12 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
         title={c.name + ' highlight'}
         aria-label={c.name + ' highlight'}
         className={`highlight-swatch ${c.className}`}
-        onMouseDown={e => e.preventDefault()}
-        onClick={() => highlight(c.value)}
+        onMouseDown={e => {
+          // Apply before the browser can move focus away from the editable
+          // selection. Some browsers collapse contentEditable selections on click.
+          e.preventDefault()
+          highlight(c.value)
+        }}
         >
         <span />
         </button>
