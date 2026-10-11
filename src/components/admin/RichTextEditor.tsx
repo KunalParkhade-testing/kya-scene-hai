@@ -163,27 +163,38 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
   const colorName = colorNames[color.toLowerCase()]
   if (!colorName) return
 
-  // Determine the effective highlight for every selected text node.
-  // Looking at text nodes avoids double-counting nested <mark> elements.
-  const preview = range.cloneContents()
-  const previewWalker = document.createTreeWalker(preview, NodeFilter.SHOW_TEXT)
-  let hasText = false
-  let sameColor = true
-  let previewNode: Node | null
+  // Inspect the original DOM, not only cloneContents(): a partial selection
+  // inside a <mark> does not necessarily include that mark in the clone.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const selectedTextNodes: Text[] = []
+  let allSelectedTextHasColor = true
+  let node: Node | null
 
-  while ((previewNode = previewWalker.nextNode())) {
-    if (!previewNode.textContent) continue
-    hasText = true
-    const effectiveMark = (previewNode.parentElement as HTMLElement | null)?.closest('mark')
+  while ((node = walker.nextNode())) {
+    const textNode = node as Text
+    if (!textNode.textContent) continue
+
+    const textRange = document.createRange()
+    textRange.selectNodeContents(textNode)
+
+    const startsBeforeNodeEnd =
+      range.compareBoundaryPoints(Range.START_TO_END, textRange) < 0
+    const endsAfterNodeStart =
+      range.compareBoundaryPoints(Range.END_TO_START, textRange) > 0
+
+    if (!startsBeforeNodeEnd || !endsAfterNodeStart) continue
+
+    selectedTextNodes.push(textNode)
+    const effectiveMark = textNode.parentElement?.closest('mark')
     if (effectiveMark?.getAttribute('data-highlight') !== colorName) {
-      sameColor = false
+      allSelectedTextHasColor = false
     }
   }
 
-  if (!hasText) return
+  if (!selectedTextNodes.length) return
 
-  // Extract the exact selection. Unwrap old highlights while keeping nested
-  // formatting such as <strong>, <em>, links, and code intact.
+  // Extract only the selection, then unwrap old highlight elements while
+  // retaining their child formatting.
   const fragment = range.extractContents()
   fragment.querySelectorAll('mark').forEach(mark => {
     const parent = mark.parentNode
@@ -195,15 +206,15 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
     parent.removeChild(mark)
   })
 
-  if (!sameColor) {
-    // Highlight text nodes individually so selections spanning paragraphs or
-    // list items do not create invalid <mark> wrappers around block elements.
-    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT)
+  if (!allSelectedTextHasColor) {
+    // Apply marks to text nodes individually; never wrap a block element in
+    // <mark>, which can produce invalid nested paragraph/list markup.
+    const fragmentWalker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT)
     const textNodes: Text[] = []
-    let node: Node | null
+    let fragmentNode: Node | null
 
-    while ((node = walker.nextNode())) {
-      if (node.textContent) textNodes.push(node as Text)
+    while ((fragmentNode = fragmentWalker.nextNode())) {
+      if (fragmentNode.textContent) textNodes.push(fragmentNode as Text)
     }
 
     textNodes.forEach(textNode => {
