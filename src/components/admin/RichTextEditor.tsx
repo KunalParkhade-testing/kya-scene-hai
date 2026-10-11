@@ -3,9 +3,7 @@
 import { useEffect, useMemo } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
-import Link from '@tiptap/extension-link'
 
 type Props = { value: string; onChange: (value: string) => void; placeholder?: string }
 const PREFIX = '__TIPTAP_JSON__:'
@@ -51,9 +49,7 @@ function readValue(value: string) {
 }
 export default function RichTextEditor({ value, onChange, placeholder = 'Write your text…' }: Props) {
   const extensions = useMemo(() => [
-    StarterKit,
-    Underline,
-    Link.configure({ openOnClick: false, autolink: false }),
+    StarterKit.configure({ link: { openOnClick: false, autolink: false } }),
     Highlight.configure({
       multicolor: true,
       HTMLAttributes: { class: 'editor-highlight' },
@@ -77,6 +73,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
     extensions,
     content: readValue(value),
     immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     editorProps: {
       attributes: {
         class: 'rich-editable',
