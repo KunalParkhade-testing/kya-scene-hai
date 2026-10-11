@@ -112,8 +112,8 @@ function serializeHtml(html:string){
   }
   if(tag==='ul')return Array.from(el.children).map(li=>'• '+nodeText(li)).join('\n')+'\n'
   if(tag==='ol')return Array.from(el.children).map((li,i)=>(i+1)+'. '+nodeText(li)).join('\n')+'\n'
-  if(tag==='p'||tag==='div')return children+'\n'
-  return children
+  if(tag==='p'||tag==='div')return result+'\n'
+  return result
  }
  return Array.from(doc.body.childNodes).map(nodeText).join('').replace(/\n{3,}/g,'\n\n').replace(/\n+$/,'')
 }
