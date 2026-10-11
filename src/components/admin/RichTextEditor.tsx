@@ -4,14 +4,16 @@ import {useEffect,useRef} from 'react'
 
 type Props={value:string;onChange:(value:string)=>void;placeholder?:string}
 
-const colors=[
- {name:'Yellow',value:'#ffe36a'},
- {name:'Green',value:'#bce8c4'},
- {name:'Blue',value:'#c7dcff'},
- {name:'Pink',value:'#ffc7df'},
- {name:'Orange',value:'#ffd0a3'},
- {name:'Red',value:'#ffb5ad'}
+
+const colors = [
+  { name: 'Yellow', value: '#ffe36a', className: 'swatch-yellow' },
+  { name: 'Green', value: '#bce8c4', className: 'swatch-green' },
+  { name: 'Blue', value: '#c7dcff', className: 'swatch-blue' },
+  { name: 'Pink', value: '#ffc7df', className: 'swatch-pink' },
+  { name: 'Orange', value: '#ffd0a3', className: 'swatch-orange' },
+  { name: 'Red', value: '#ffb5ad', className: 'swatch-red' },
 ]
+
 function escapeHtml(value:string){
  return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
@@ -73,12 +75,37 @@ function serializeHtml(html:string){
   if(tag==='mark'||tag==='span'||tag==='font'||el.style.backgroundColor||el.hasAttribute('data-highlight')){
    const color=el.getAttribute('data-highlight')||el.style.backgroundColor||''
    const rgb=color.toLowerCase().replace(/\s/g,'')
-   const colorName=rgb==='#ffe36a'||rgb==='rgb(255,227,106)'?'yellow':
-    rgb==='#bce8c4'||rgb==='rgb(188,232,196)'?'green':
-    rgb==='#c7dcff'||rgb==='rgb(199,220,255)'?'blue':
-    rgb==='#ffc7df'||rgb==='rgb(255,199,223)'?'pink':
-    rgb==='#ffd0a3'||rgb==='rgb(255,208,163)'?'orange':
-    rgb==='#ffb5ad'||rgb==='rgb(255,181,173)'?'red':'yellow'
+
+   const normalizedColor = color.toLowerCase().replace(/\s/g, '')
+
+   const colorMap: Record<string, string> = {
+    yellow: 'yellow',
+    '#ffe36a': 'yellow',
+    'rgb(255,227,106)': 'yellow',
+
+    green: 'green',
+    '#bce8c4': 'green',
+    'rgb(188,232,196)': 'green',
+
+    blue: 'blue',
+    '#c7dcff': 'blue',
+    'rgb(199,220,255)': 'blue',
+
+    pink: 'pink',
+    '#ffc7df': 'pink',
+    'rgb(255,199,223)': 'pink',
+
+    orange: 'orange',
+    '#ffd0a3': 'orange',
+    'rgb(255,208,163)': 'orange',
+
+    red: 'red',
+    '#ffb5ad': 'red',
+    'rgb(255,181,173)': 'red',
+    }
+
+   const colorName = colorMap[normalizedColor] ?? 'yellow'
+
    return '=='+colorName+'|'+children+'=='
   }
   if(tag==='ul')return Array.from(el.children).map(li=>'• '+nodeText(li)).join('\n')+'\n'
@@ -111,11 +138,76 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
   document.execCommand(cmd,false,arg)
   sync()
  }
- function highlight(color:string){
-  editor.current?.focus()
-  document.execCommand('hiliteColor',false,color)
+
+
+
+ function highlight(color: string) {
+  const root = editor.current
+  const selection = window.getSelection()
+
+  if (!root || !selection || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0)
+  if (range.collapsed || !root.contains(range.commonAncestorContainer)) return
+
+  const colorNames: Record<string, string> = {
+    '#ffe36a': 'yellow',
+    '#bce8c4': 'green',
+    '#c7dcff': 'blue',
+    '#ffc7df': 'pink',
+    '#ffd0a3': 'orange',
+    '#ffb5ad': 'red',
+  }
+
+  const colorName = colorNames[color.toLowerCase()]
+  if (!colorName) return
+
+  // Inspect only the content inside the current selection.
+  const preview = range.cloneContents()
+  const totalText = preview.textContent ?? ''
+  if (!totalText) return
+
+  const marks = Array.from(preview.querySelectorAll('mark'))
+  const markedTextLength = marks.reduce(
+    (sum, mark) => sum + (mark.textContent?.length ?? 0),
+    0
+  )
+
+  const sameColor =
+    marks.length > 0 &&
+    marks.every(mark => mark.getAttribute('data-highlight') === colorName) &&
+    markedTextLength === totalText.length
+
+  // Extract the exact selection, then remove any old highlight wrappers
+  // from the extracted fragment without removing its inner formatting.
+  const fragment = range.extractContents()
+
+  fragment.querySelectorAll('mark').forEach(mark => {
+    const parent = mark.parentNode
+    if (!parent) return
+
+    while (mark.firstChild) {
+      parent.insertBefore(mark.firstChild, mark)
+    }
+    parent.removeChild(mark)
+  })
+
+  if (sameColor) {
+    // Clicking the active colour again removes the highlight.
+    range.insertNode(fragment)
+  } else {
+    // One new wrapper replaces the old colour.
+    const mark = document.createElement('mark')
+    mark.setAttribute('data-highlight', colorName)
+    mark.appendChild(fragment)
+    range.insertNode(mark)
+  }
+
+  root.normalize()
+  selection.removeAllRanges()
   sync()
  }
+
  function code(){
   const selection=window.getSelection()
   if(!selection||selection.rangeCount===0||selection.isCollapsed)return
@@ -142,7 +234,21 @@ export default function RichTextEditor({value,onChange,placeholder='Write your t
    </div>
    <span className="rich-toolbar-divider"/>
    <div className="rich-toolgroup">
-    <div className="highlight-swatches" role="group" aria-label="Highlight colour">{colors.map(c=><button key={c.name} type="button" title={c.name+' highlight'} aria-label={c.name+' highlight'} className="highlight-swatch" style={{'--swatch':c.value} as React.CSSProperties} onMouseDown={e=>e.preventDefault()} onClick={()=>highlight(c.value)}><span/></button>)}</div>
+    <div className="highlight-swatches" role="group" aria-label="Highlight colour">
+    {colors.map(c => (
+        <button
+        key={c.name}
+        type="button"
+        title={c.name + ' highlight'}
+        aria-label={c.name + ' highlight'}
+        className={`highlight-swatch ${c.className}`}
+        onMouseDown={e => e.preventDefault()}
+        onClick={() => highlight(c.value)}
+        >
+        <span />
+        </button>
+    ))}
+    </div>
     <button type="button" title="Inline code" onMouseDown={e=>e.preventDefault()} onClick={code}>Code</button>
    </div>
    <span className="rich-toolbar-divider"/>

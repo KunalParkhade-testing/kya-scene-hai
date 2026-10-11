@@ -5,21 +5,58 @@ import SiteFooter from '@/components/SiteFooter';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
-function inlineText(value:string) {
-  const tokenPattern = /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
-  return value.split(tokenPattern).filter(Boolean).map((part,index)=>{
-    if(part.startsWith('**')&&part.endsWith('**')) return <strong key={index}>{part.slice(2,-2)}</strong>;
-    if(part.startsWith('~~')&&part.endsWith('~~')) return <del key={index}>{part.slice(2,-2)}</del>;
-    if(part.startsWith('==')&&part.endsWith('==')) { const colored=part.match(/^==(yellow|green|blue|pink|orange|red)\|([\s\S]+)==$/); return <mark key={index} className={colored?'highlight-'+colored[1]:'highlight-yellow'}>{colored?colored[2]:part.slice(2,-2)}</mark>; }
-    if(part.startsWith('*')&&part.endsWith('*')) return <em key={index}>{part.slice(1,-1)}</em>;
-    if(part.startsWith(String.fromCharCode(96))&&part.endsWith(String.fromCharCode(96))) return <code key={index}>{part.slice(1,-1)}</code>;
-    const underline=part.match(/^<u>(.*?)<\/u>$/);
-    if(underline) return <u key={index}>{underline[1]}</u>;
-    const link=part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
-    if(link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
-    return part;
-  });
+
+function inlineText(value: string): React.ReactNode[] {
+  const tokenPattern =
+    /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g
+
+  return value.split(tokenPattern).filter(Boolean).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{inlineText(part.slice(2, -2))}</strong>
+    }
+
+    if (part.startsWith('~~') && part.endsWith('~~')) {
+      return <del key={index}>{inlineText(part.slice(2, -2))}</del>
+    }
+
+    if (part.startsWith('==') && part.endsWith('==')) {
+      const colored = part.match(/^==(yellow|green|blue|pink|orange|red)\|([\s\S]+)==$/)
+      const color = colored?.[1] ?? 'yellow'
+      const content = colored ? colored[2] : part.slice(2, -2)
+
+      return (
+        <mark key={index} className={`highlight-${color}`}>
+          {inlineText(content)}
+        </mark>
+      )
+    }
+
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={index}>{inlineText(part.slice(1, -1))}</em>
+    }
+
+    if (part.startsWith(String.fromCharCode(96)) && part.endsWith(String.fromCharCode(96))) {
+      return <code key={index}>{inlineText(part.slice(1, -1))}</code>
+    }
+
+    const underline = part.match(/^<u>(.*?)<\/u>$/)
+    if (underline) {
+      return <u key={index}>{inlineText(underline[1])}</u>
+    }
+
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/)
+    if (link) {
+      return (
+        <a key={index} href={link[2]} target="_blank" rel="noreferrer">
+          {inlineText(link[1])}
+        </a>
+      )
+    }
+
+    return part
+  })
 }
+
 function headingId(value:string) {
   return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/[\s-]+/g,'-');
 }
