@@ -6,7 +6,73 @@ import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
 
+
+const TIPTAP_PREFIX = '__TIPTAP_JSON__:'
+const highlightClass: Record<string, string> = {
+  '#ffe36a': 'highlight-yellow', yellow: 'highlight-yellow',
+  '#bce8c4': 'highlight-green', green: 'highlight-green',
+  '#c7dcff': 'highlight-blue', blue: 'highlight-blue',
+  '#ffc7df': 'highlight-pink', pink: 'highlight-pink',
+  '#ffd0a3': 'highlight-orange', orange: 'highlight-orange',
+  '#ffb5ad': 'highlight-red', red: 'highlight-red',
+}
+type TipNode = { type?: string; text?: string; attrs?: Record<string, unknown>; marks?: { type: string; attrs?: Record<string, unknown> }[]; content?: TipNode[] }
+function tipNode(node: TipNode, key: string): React.ReactNode {
+  if (node.type === 'text') {
+    let child: React.ReactNode = node.text ?? ''
+    for (const [index, mark] of (node.marks ?? []).entries()) {
+      if (mark.type === 'bold') child = <strong key={key + '-m' + index}>{child}</strong>
+      else if (mark.type === 'italic') child = <em key={key + '-m' + index}>{child}</em>
+      else if (mark.type === 'underline') child = <u key={key + '-m' + index}>{child}</u>
+      else if (mark.type === 'strike') child = <del key={key + '-m' + index}>{child}</del>
+      else if (mark.type === 'code') child = <code key={key + '-m' + index}>{child}</code>
+      else if (mark.type === 'highlight') {
+        const raw = String(mark.attrs?.color ?? 'yellow').toLowerCase()
+        child = <mark key={key + '-m' + index} className={highlightClass[raw] ?? 'highlight-yellow'}>{child}</mark>
+      }
+      else if (mark.type === 'link') {
+        const href = String(mark.attrs?.href ?? '')
+        if (/^https?:\/\//i.test(href)) child = <a key={key + '-m' + index} href={href} target="_blank" rel="noreferrer">{child}</a>
+      }
+    }
+    return <React.Fragment key={key}>{child}</React.Fragment>
+  }
+  if (node.type === 'hardBreak') return <br key={key} />
+  const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i))
+  if (node.type === 'paragraph') return <p key={key}>{children}</p>
+  if (node.type === 'bulletList') return <ul key={key}>{children}</ul>
+  if (node.type === 'orderedList') return <ol key={key}>{children}</ol>
+  if (node.type === 'listItem') return <li key={key}>{children}</li>
+  if (node.type === 'blockquote') return <blockquote key={key}>{children}</blockquote>
+  if (node.type === 'doc') return <React.Fragment key={key}>{children}</React.Fragment>
+  return <React.Fragment key={key}>{children}</React.Fragment>
+}
+function tiptapContent(value: string): React.ReactNode | null {
+  if (!value.startsWith(TIPTAP_PREFIX)) return null
+  try {
+    const parsed = JSON.parse(value.slice(TIPTAP_PREFIX.length)) as TipNode
+    return tipNode(parsed, 'tiptap')
+  } catch {
+    return null
+  }
+}
+function inlineTiptap(value: string): React.ReactNode[] | null {
+  if (!value.startsWith(TIPTAP_PREFIX)) return null
+  try {
+    const parsed = JSON.parse(value.slice(TIPTAP_PREFIX.length)) as TipNode
+    const content = parsed.type === 'doc' ? parsed.content ?? [] : [parsed]
+    return content.flatMap((node, i) => {
+      if (node.type === 'paragraph') return (node.content ?? []).map((child, j) => tipNode(child, 'inline-' + i + '-' + j))
+      return [tipNode(node, 'inline-' + i)]
+    })
+  } catch {
+    return null
+  }
+}
+
 function inlineText(value: string): React.ReactNode[] {
+  const tiptap = inlineTiptap(value)
+  if (tiptap) return tiptap
   const tokenPattern =
     /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g
 
@@ -61,6 +127,8 @@ function headingId(value:string) {
   return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/[\s-]+/g,'-');
 }
 function formattedParagraphs(value:string) {
+  const tiptap = tiptapContent(value)
+  if (tiptap) return tiptap
   const lines=value.split('\n');
   const output:React.ReactNode[]=[];
   let paragraph:string[]=[];
