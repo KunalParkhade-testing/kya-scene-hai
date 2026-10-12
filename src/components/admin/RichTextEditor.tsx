@@ -173,7 +173,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
     editor.chain().focus().insertContent({
       type: 'codeBlock',
       attrs: { language: 'markdown' },
-      content: [{ type: 'text', text: '# Write Markdown here\\n\\nUse **bold**, *italic*, lists, links, and fenced code blocks.' }],
+      content: [{ type: 'text', text: '# Write Markdown here\n\nUse **bold**, *italic*, lists, links, and fenced code blocks.' }],
     }).run()
   }
   const toggleHighlight = (color: string) => command(() => {
