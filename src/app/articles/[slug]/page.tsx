@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
+import CodeBlockDisplay from '@/components/CodeBlockDisplay';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
@@ -39,6 +40,7 @@ function tipNode(node: TipNode, key: string): React.ReactNode {
     return <React.Fragment key={key}>{child}</React.Fragment>
   }
   if (node.type === 'hardBreak') return <br key={key} />
+  if (node.type === 'codeBlock') return <CodeBlockDisplay key={key} code={(node.content ?? []).map(child => child.text ?? '').join('')} language={String(node.attrs?.language ?? 'text')} />
   const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i))
   if (node.type === 'paragraph') return <p key={key}>{children}</p>
   if (node.type === 'bulletList') return <ul key={key}>{children}</ul>

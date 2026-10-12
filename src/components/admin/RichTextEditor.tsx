@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
+import { Node, mergeAttributes } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
@@ -16,6 +17,48 @@ const colors = [
   { name: 'Red', value: '#ffb5ad' },
 ]
 const colorNames: Record<string, string> = Object.fromEntries(colors.map(c => [c.value, c.name.toLowerCase()]))
+const languages = [
+  { value: 'text', label: 'Plain text' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'tsx', label: 'TSX / React' },
+  { value: 'jsx', label: 'JSX / React' },
+  { value: 'python', label: 'Python' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'bash', label: 'Bash / Shell' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'c', label: 'C' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'java', label: 'Java' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'swift', label: 'Swift' },
+]
+const CodeBlock = Node.create({
+  name: 'codeBlock',
+  group: 'block',
+  content: 'text*',
+  marks: '',
+  code: true,
+  defining: true,
+  addAttributes() {
+    return { language: { default: 'text', parseHTML: element => element.getAttribute('data-language') || 'text', renderHTML: attributes => ({ 'data-language': attributes.language || 'text' }) } }
+  },
+  parseHTML() {
+    return [
+      { tag: 'pre[data-code-block]', preserveWhitespace: 'full' },
+      { tag: 'pre', preserveWhitespace: 'full' },
+    ]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['pre', mergeAttributes(HTMLAttributes, { 'data-code-block': 'true', class: 'editor-code-block' }), ['code', 0]]
+  },
+})
 
 function escapeHtml(value: string) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -49,7 +92,8 @@ function readValue(value: string) {
 }
 export default function RichTextEditor({ value, onChange, placeholder = 'Write your text…' }: Props) {
   const extensions = useMemo(() => [
-    StarterKit.configure({ link: { openOnClick: false, autolink: false } }),
+    StarterKit.configure({ link: { openOnClick: false, autolink: false }, codeBlock: false }),
+    CodeBlock,
     Highlight.configure({
       multicolor: true,
       HTMLAttributes: { class: 'editor-highlight' },
@@ -115,6 +159,15 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
     const url = window.prompt('Paste the full https:// link')
     if (url && /^https?:\/\//i.test(url)) editor?.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank', rel: 'noreferrer' }).run()
   }
+  const insertCodeBlock = () => {
+    if (!editor) return
+    editor.chain().focus().insertContent({ type: 'codeBlock', attrs: { language: 'javascript' }, content: [{ type: 'text', text: '// Paste or write code here' }] }).run()
+  }
+  const changeCodeLanguage = (language: string) => {
+    if (!editor) return
+    if (editor.isActive('codeBlock')) editor.chain().focus().updateAttributes('codeBlock', { language }).run()
+    else editor.chain().focus().insertContent({ type: 'codeBlock', attrs: { language }, content: [{ type: 'text', text: '' }] }).run()
+  }
   const toggleHighlight = (color: string) => command(() => {
     if (!editor) return
     const active = editor.isActive('highlight', { color })
@@ -141,6 +194,8 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
         <button type="button" title="Numbered list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleOrderedList().run())}>1. List</button>
         <button type="button" title="Insert link" onMouseDown={e => e.preventDefault()} onClick={setLink}>Link</button>
         <button type="button" title="Inline code" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Code</button>
+        <button type="button" title="Insert dedicated code block" aria-label="Insert code block" onMouseDown={e => e.preventDefault()} onClick={insertCodeBlock}>＋ Code block</button>
+        <label className="code-language-control">Language <select aria-label="Code block language" value={String(editor?.getAttributes('codeBlock').language || 'javascript')} onChange={e => changeCodeLanguage(e.target.value)}>{languages.map(language => <option key={language.value} value={language.value}>{language.label}</option>)}</select></label>
       </div>
     </div>
     <EditorContent editor={editor} />
