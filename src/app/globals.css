@@ -166,3 +166,26 @@ nav.article-toc ol{min-width:0}
 .syntax-builtin{color:#ffd83d}
 .syntax-punctuation{color:#e2b8ff}
 @media(max-width:760px){.code-language-control{max-width:100%;font-size:11px}.code-language-control select{max-width:115px}.rich-editable pre.editor-code-block{padding:12px;font-size:12px}.published-code-block{margin:22px 0;box-shadow:4px 4px 0 var(--ink)}.published-code-block pre{padding:14px;font-size:12px}.code-block-header{padding:9px 10px}}
+
+/* Markdown-language code blocks are rendered as formatted article content */
+.markdown-block-display{margin:24px 0;font-family:Georgia,serif;font-size:1em;line-height:1.72;color:var(--ink);overflow-wrap:anywhere}
+.markdown-block-display> :first-child{margin-top:0}
+.markdown-block-display> :last-child{margin-bottom:0}
+.markdown-block-display h1,.markdown-block-display h2,.markdown-block-display h3,.markdown-block-display h4,.markdown-block-display h5,.markdown-block-display h6{font-family:Arial,Helvetica,sans-serif;line-height:1.15;letter-spacing:-.7px;margin:1.25em 0 .55em}
+.markdown-block-display h1{font-size:2.15em;letter-spacing:-1.8px}
+.markdown-block-display h2{font-size:1.75em}
+.markdown-block-display h3{font-size:1.4em}
+.markdown-block-display h4{font-size:1.2em}
+.markdown-block-display h5{font-size:1.08em}
+.markdown-block-display h6{font-size:1em}
+.markdown-block-display p{margin:.75em 0}
+.markdown-block-display ul,.markdown-block-display ol{padding-left:1.6em;margin:1em 0}
+.markdown-block-display li{margin:.3em 0;padding-left:.2em}
+.markdown-block-display blockquote{border-left:5px solid var(--red);padding:2px 0 2px 20px;margin:1.2em 0;font-family:Arial,Helvetica,sans-serif;font-size:1.05em;font-weight:600}
+.markdown-block-display blockquote p{margin:.4em 0}
+.markdown-block-display a{color:var(--blue);text-decoration:underline;text-underline-offset:3px}
+.markdown-block-display img.markdown-image{display:block;max-width:100%;height:auto;max-height:560px;object-fit:contain;margin:20px 0;border:2px solid var(--ink)}
+.markdown-block-display hr{border:0;border-top:2px solid var(--line);margin:2em 0}
+.markdown-block-display code:not(pre code){font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#e9e1d2;padding:2px 5px;border-radius:3px;font-size:.88em}
+.markdown-block-display .published-code-block{font-size:.72em;line-height:1.5}
+@media(max-width:650px){.markdown-block-display h1{font-size:1.8em}.markdown-block-display h2{font-size:1.5em}.markdown-block-display blockquote{padding-left:14px}}
