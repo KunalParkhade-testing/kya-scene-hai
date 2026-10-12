@@ -66,6 +66,7 @@ function renderMarkdown(markdown: string): React.ReactNode[] {
       else if (level === 4) out.push(<h4 key={id}>{content}</h4>)
       else if (level === 5) out.push(<h5 key={id}>{content}</h5>)
       else out.push(<h6 key={id}>{content}</h6>)
+      i++
       continue
     }
     if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { out.push(<hr key={'md-' + key++} />); i++; continue }
