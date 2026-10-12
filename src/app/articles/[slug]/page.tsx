@@ -4,6 +4,7 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import CodeBlockDisplay from '@/components/CodeBlockDisplay';
+import MarkdownBlockDisplay from '@/components/MarkdownBlockDisplay';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
