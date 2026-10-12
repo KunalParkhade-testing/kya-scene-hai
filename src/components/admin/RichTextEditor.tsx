@@ -31,6 +31,13 @@ const languages = [
   { value: 'bash', label: 'Bash / Shell' },
   { value: 'yaml', label: 'YAML' },
   { value: 'markdown', label: 'Markdown' },
+  { value: 'c', label: 'C' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'java', label: 'Java' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'swift', label: 'Swift' },
 ]
 const CodeBlock = Node.create({
   name: 'codeBlock',
