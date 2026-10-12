@@ -38,7 +38,7 @@ function inline(value: string, keyPrefix: string): React.ReactNode[] {
 }
 
 function renderMarkdown(markdown: string): React.ReactNode[] {
-  const lines = markdown.replace(/<!--[\\s\\S]*?-->/g, '').replace(/\\r\\n?/g, '\\n').split('\\n')
+  const lines = markdown.replace(/<!--[\s\S]*?-->/g, '').replace(/\r\n?/g, '\n').split('\n')
   const out: React.ReactNode[] = []
   let i = 0
   let key = 0
@@ -48,18 +48,18 @@ function renderMarkdown(markdown: string): React.ReactNode[] {
     const line = lines[i]
     if (!line.trim()) { i++; continue }
 
-    const fence = line.match(new RegExp('^\\\\s*' + tick + '{3}([^\\\\s' + tick + ']*)\\\\s*$'))
+    const fence = line.match(new RegExp('^\\s*' + tick + '{3}([^\\s' + tick + ']*)\\s*$'))
     if (fence) {
       const language = fence[1] || 'text'
       const body: string[] = []
       i++
-      while (i < lines.length && !new RegExp('^\\\\s*' + tick + '{3}\\\\s*$').test(lines[i])) body.push(lines[i++])
+      while (i < lines.length && !new RegExp('^\\s*' + tick + '{3}\\s*$').test(lines[i])) body.push(lines[i++])
       if (i < lines.length) i++
-      out.push(<CodeBlockDisplay key={'md-' + key++} code={body.join('\\n')} language={language} />)
+      out.push(<CodeBlockDisplay key={'md-' + key++} code={body.join('\n')} language={language} />)
       continue
     }
 
-    const heading = line.match(/^\\s*(#{1,6})\\s+(.+?)\\s*#*\\s*$/)
+    const heading = line.match(/^\s*(#{1,6})\s+(.+?)\s*#*\s*$/)
     if (heading) {
       const level = heading[1].length
       const children = inline(heading[2], 'mh-' + key)
@@ -74,36 +74,36 @@ function renderMarkdown(markdown: string): React.ReactNode[] {
       continue
     }
 
-    if (/^\\s*([-*_])(?:\\s*\\1){2,}\\s*$/.test(line)) {
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) {
       out.push(<hr key={'md-' + key++} />)
       i++
       continue
     }
 
-    if (/^\\s*>/.test(line)) {
+    if (/^\s*>/.test(line)) {
       const quote: string[] = []
-      while (i < lines.length && /^\\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\\s*>\\s?/, ''))
+      while (i < lines.length && /^\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\s*>\s?/, ''))
       out.push(<blockquote key={'md-' + key++}>{quote.map((q, j) => <p key={j}>{inline(q, 'mq-' + key + '-' + j)}</p>)}</blockquote>)
       continue
     }
 
-    if (/^\\s*[-+*]\\s+/.test(line)) {
+    if (/^\s*[-+*]\s+/.test(line)) {
       const items: string[] = []
-      while (i < lines.length && /^\\s*[-+*]\\s+/.test(lines[i])) items.push(lines[i++].replace(/^\\s*[-+*]\\s+/, ''))
+      while (i < lines.length && /^\s*[-+*]\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*[-+*]\s+/, ''))
       out.push(<ul key={'md-' + key++}>{items.map((item, j) => <li key={j}>{inline(item, 'mu-' + key + '-' + j)}</li>)}</ul>)
       continue
     }
 
-    if (/^\\s*\\d+[.)]\\s+/.test(line)) {
+    if (/^\s*\d+[.)]\s+/.test(line)) {
       const items: string[] = []
-      while (i < lines.length && /^\\s*\\d+[.)]\\s+/.test(lines[i])) items.push(lines[i++].replace(/^\\s*\\d+[.)]\\s+/, ''))
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*\d+[.)]\s+/, ''))
       out.push(<ol key={'md-' + key++}>{items.map((item, j) => <li key={j}>{inline(item, 'mo-' + key + '-' + j)}</li>)}</ol>)
       continue
     }
 
     const paragraph: string[] = [line]
     i++
-    while (i < lines.length && lines[i].trim() && !/^\\s*(#{1,6}\\s+|>|[-+*]\\s+|\\d+[.)]\\s+)/.test(lines[i]) && !lines[i].trimStart().startsWith(tick.repeat(3))) paragraph.push(lines[i++])
+    while (i < lines.length && lines[i].trim() && !/^\s*(#{1,6}\s+|>|[-+*]\s+|\d+[.)]\s+)/.test(lines[i]) && !lines[i].trimStart().startsWith(tick.repeat(3))) paragraph.push(lines[i++])
     out.push(<p key={'md-' + key++}>{paragraph.map((part, j) => <React.Fragment key={j}>{j > 0 ? ' ' : null}{inline(part, 'mp-' + key + '-' + j)}</React.Fragment>)}</p>)
   }
 
