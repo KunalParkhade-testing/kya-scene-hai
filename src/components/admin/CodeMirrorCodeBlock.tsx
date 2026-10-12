@@ -1,6 +1,7 @@
 'use client'
 
 import CodeMirror from '@uiw/react-codemirror'
+import { StreamLanguage } from '@codemirror/language'
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -8,14 +9,14 @@ import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 import { json } from '@codemirror/lang-json'
 import { sql } from '@codemirror/lang-sql'
-import { shell } from '@codemirror/lang-shell'
+import { shell } from '@codemirror/legacy-modes/mode/shell'
 import { yaml } from '@codemirror/lang-yaml'
 import { markdown } from '@codemirror/lang-markdown'
 import { cpp } from '@codemirror/lang-cpp'
 import { java } from '@codemirror/lang-java'
 import { go } from '@codemirror/lang-go'
 import { rust } from '@codemirror/lang-rust'
-import { swift } from '@codemirror/lang-swift'
+import { swift } from '@codemirror/legacy-modes/mode/swift'
 import { csharp } from '@replit/codemirror-lang-csharp'
 
 function languageExtension(language: string) {
@@ -37,7 +38,8 @@ function languageExtension(language: string) {
     case 'sql':
       return sql()
     case 'bash':
-      return shell()
+    case 'shell':
+      return StreamLanguage.define(shell)
     case 'yaml':
       return yaml()
     case 'markdown':
@@ -55,7 +57,7 @@ function languageExtension(language: string) {
     case 'rust':
       return rust()
     case 'swift':
-      return swift()
+      return StreamLanguage.define(swift)
     default:
       return []
   }
