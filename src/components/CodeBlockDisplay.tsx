@@ -21,25 +21,79 @@ const keywords: Record<string, string[]> = {
 }
 const aliases: Record<string,string> = { js:'javascript', jsx:'javascript', ts:'typescript', tsx:'typescript', py:'python', sh:'bash', shell:'bash', yml:'yaml', html:'html', xml:'html', plaintext:'text', text:'text', 'c++':'cpp', 'c#':'csharp', golang:'go', md:'markdown' }
 function canonical(language: string) { const l=language.toLowerCase(); return aliases[l] || l || 'text' }
-function tokenClass(token: string, language: string) {
-  if (/^\s+$/.test(token)) return ''
-  if (/^(\/\/|#|--|\/\*)/.test(token)) return 'syntax-comment'
-  if (/^(["'`])/.test(token)) return 'syntax-string'
-  if (/^\d/.test(token)) return 'syntax-number'
-  if (/^[A-Za-z_$][\w$]*$/.test(token) && (keywords[language] || []).includes(token)) return 'syntax-keyword'
-  if (/^[A-Za-z_$][\w$]*$/.test(token) && /^(console|Math|JSON|Array|Object|Promise|String|Number|Boolean|Date|React|Supabase)$/.test(token)) return 'syntax-builtin'
-  if (/^[A-Za-z_$][\w$]*$/.test(token) && /^(TODO|FIXME|NOTE)$/.test(token)) return 'syntax-comment'
-  if (/^[{}()[\].,;:+*/%=<>!?&|~-]+$/.test(token)) return 'syntax-punctuation'
-  return ''
-}
-function highlightLine(line: string, language: string) {
-  const pattern = /(\/\/.*$|#.*$|--.*$|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|[^\w\s]|\s+)/g
-  return line.split(pattern).filter(Boolean).map((token, i) => {
-    const cls = tokenClass(token, language)
-    return cls ? <span className={cls} key={i}>{token}</span> : token
-  })
+function commentRules(language: string) {
+  const slashLanguages = ['javascript','typescript','jsx','tsx','c','cpp','csharp','java','go','rust','swift','css']
+  const hashLanguages = ['python','bash','yaml']
+  return {
+    line: slashLanguages.includes(language) ? '//' : hashLanguages.includes(language) ? '#' : language === 'sql' ? '--' : '',
+    block: ['javascript','typescript','jsx','tsx','c','cpp','csharp','java','go','rust','swift','css','sql'].includes(language) ? ['/*','*/'] as [string,string] : null,
+    html: ['html','xml','markdown'].includes(language) ? ['<!--','-->'] as [string,string] : null,
+  }
 }
 
+function highlightLine(line: string, language: string, wasInBlockComment: boolean) {
+  const rules = commentRules(language)
+  const tokens: { text: string; kind: string }[] = []
+  let i = 0
+  let inBlockComment = wasInBlockComment
+  const add = (text: string, kind = '') => {
+    if (!text) return
+    const last = tokens[tokens.length - 1]
+    if (last && last.kind === kind) last.text += text
+    else tokens.push({ text, kind })
+  }
+
+  while (i < line.length) {
+    if (inBlockComment && rules.block) {
+      const close = line.indexOf(rules.block[1], i)
+      if (close === -1) { add(line.slice(i), 'syntax-comment'); i = line.length }
+      else { add(line.slice(i, close + rules.block[1].length), 'syntax-comment'); i = close + rules.block[1].length; inBlockComment = false }
+      continue
+    }
+    if (inBlockComment && rules.html) {
+      const close = line.indexOf(rules.html[1], i)
+      if (close === -1) { add(line.slice(i), 'syntax-comment'); i = line.length }
+      else { add(line.slice(i, close + rules.html[1].length), 'syntax-comment'); i = close + rules.html[1].length; inBlockComment = false }
+      continue
+    }
+    const blockStart = rules.block && line.startsWith(rules.block[0], i) ? rules.block : rules.html && line.startsWith(rules.html[0], i) ? rules.html : null
+    if (blockStart) {
+      const close = line.indexOf(blockStart[1], i + blockStart[0].length)
+      if (close === -1) { add(line.slice(i), 'syntax-comment'); inBlockComment = true; i = line.length }
+      else { add(line.slice(i, close + blockStart[1].length), 'syntax-comment'); i = close + blockStart[1].length }
+      continue
+    }
+    if (rules.line && line.startsWith(rules.line, i)) { add(line.slice(i), 'syntax-comment'); break }
+    const ch = line[i]
+    if (ch === '"' || ch === "'" || (ch === String.fromCharCode(96) && ['javascript','typescript','jsx','tsx','markdown'].includes(language))) {
+      const quote = ch
+      let j = i + 1
+      while (j < line.length) {
+        if (line[j] === String.fromCharCode(92)) { j += 2; continue }
+        if (line[j] === quote) { j++; break }
+        j++
+      }
+      add(line.slice(i, j), 'syntax-string')
+      i = j
+      continue
+    }
+    const rest = line.slice(i)
+    const number = rest.match(/^\d+(?:\.\d+)?/)
+    if (number) { add(number[0], 'syntax-number'); i += number[0].length; continue }
+    const word = rest.match(/^[A-Za-z_$][\w$]*/)
+    if (word) {
+      const value = word[0]
+      if ((keywords[language] || []).includes(value)) add(value, 'syntax-keyword')
+      else if (['console','Math','JSON','Array','Object','Promise','String','Number','Boolean','Date','React','Supabase'].includes(value) && ['javascript','typescript','jsx','tsx'].includes(language)) add(value, 'syntax-builtin')
+      else add(value)
+      i += value.length
+      continue
+    }
+    add(ch, /[{}()[\].,;:+*/%=<>!?&|~-]/.test(ch) ? 'syntax-punctuation' : '')
+    i++
+  }
+  return { nodes: tokens.map((token, index) => token.kind ? <span className={token.kind} key={index}>{token.text}</span> : token.text), inBlockComment }
+}
 export default function CodeBlockDisplay({ code, language = 'text' }: Props) {
   const [copied, setCopied] = useState(false)
   const lang = canonical(language)
@@ -52,11 +106,16 @@ export default function CodeBlockDisplay({ code, language = 'text' }: Props) {
       setCopied(false)
     }
   }
+  let inBlockComment = false
+  const lines = code.split('\n').map((line) => {
+    const highlighted = highlightLine(line, lang, inBlockComment)
+    inBlockComment = highlighted.inBlockComment
+    return highlighted.nodes
+  })
   return <div className="published-code-block">
     <div className="code-block-header">
       <span className="code-language">{language || 'Plain text'}</span>
       <button type="button" onClick={copy} className="code-copy" aria-label="Copy code">{copied ? 'Copied ✓' : 'Copy code ↗'}</button>
     </div>
-    <pre><code>{code.split('\n').map((line, i) => <span className="code-line" key={i}>{highlightLine(line, lang)}{i < code.split('\n').length - 1 ? '\n' : ''}</span>)}</code></pre>
-  </div>
-}
+    <pre><code>{lines.map((line, i) => <span className="code-line" key={i}>{line}{i < lines.length - 1 ? '\n' : ''}</span>)}</code></pre>
+  </div>}
