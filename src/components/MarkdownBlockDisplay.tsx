@@ -15,15 +15,15 @@ function safeUrl(value: string) {
 }
 
 function inline(value: string, keyPrefix: string): React.ReactNode[] {
-  const pattern = /(\\!\\[[^\\]]*\\]\\([^\\s)]+(?:\\s+[^)]*)?\\)|\\[[^\\]]+\\]\\([^\\s)]+(?:\\s+[^)]*)?\\)|\\*\\*\\*.+?\\*\\*\\*|\\*\\*.+?\\*\\*|__.+?__|~~.+?~~|\\*[^*\\n]+\\*|_[^_\\n]+_|\\x60[^\\x60\\n]+\\x60)/g
+  const pattern = /(\!\[[^\]]*\]\([^\s)]+(?:\s+[^)]*)?\)|\[[^\]]+\]\([^\s)]+(?:\s+[^)]*)?\)|\*\*\*.+?\*\*\*|\*\*.+?\*\*|__.+?__|~~.+?~~|\*[^*\n]+\*|_[^_\n]+_|\x60[^\x60\n]+\x60)/g
   return value.split(pattern).filter(Boolean).map((part, index) => {
     const key = keyPrefix + '-' + index
-    const image = part.match(/^!\\[([^\\]]*)\\]\\(([^\\s)]+)(?:\\s+"([^"]*)")?\\)$/)
+    const image = part.match(/^!\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/)
     if (image) {
       const src = safeUrl(image[2])
       return src ? <img key={key} src={src} alt={image[1]} title={image[3]} className="markdown-image" loading="lazy" /> : image[1]
     }
-    const link = part.match(/^\\[([^\\]]+)\\]\\(([^\\s)]+)(?:\\s+"([^"]*)")?\\)$/)
+    const link = part.match(/^\[([^\]]+)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/)
     if (link) {
       const href = safeUrl(link[2])
       return href ? <a key={key} href={href} title={link[3]} target="_blank" rel="noopener noreferrer">{inline(link[1], key + '-label')}</a> : link[1]
@@ -45,17 +45,17 @@ function renderMarkdown(markdown: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i]
     if (!line.trim()) { i++; continue }
-    const fence = line.match(/^\\s*```\\s*([\\w+#.-]*)\\s*$/)
+    const fence = line.match(/^\s*```\s*([\w+#.-]*)\s*$/)
     if (fence) {
       const language = fence[1] || 'text'
       const body: string[] = []
       i++
-      while (i < lines.length && !/^\\s*```\\s*$/.test(lines[i])) body.push(lines[i++])
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) body.push(lines[i++])
       if (i < lines.length) i++
       out.push(<CodeBlockDisplay key={'md-' + key++} code={body.join('\n')} language={language} />)
       continue
     }
-    const heading = line.match(/^\\s*(#{1,6})\\s+(.+?)\\s*#*\\s*$/)
+    const heading = line.match(/^\s*(#{1,6})\s+(.+?)\s*#*\s*$/)
     if (heading) {
       const level = heading[1].length
       const content = inline(heading[2], 'mh-' + key)
@@ -68,28 +68,28 @@ function renderMarkdown(markdown: string): React.ReactNode[] {
       else out.push(<h6 key={id}>{content}</h6>)
       continue
     }
-    if (/^\\s*([-*_])(?:\\s*\\1){2,}\\s*$/.test(line)) { out.push(<hr key={'md-' + key++} />); i++; continue }
-    if (/^\\s*>/.test(line)) {
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { out.push(<hr key={'md-' + key++} />); i++; continue }
+    if (/^\s*>/.test(line)) {
       const quote: string[] = []
-      while (i < lines.length && /^\\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\\s*>\\s?/, ''))
+      while (i < lines.length && /^\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\s*>\s?/, ''))
       out.push(<blockquote key={'md-' + key++}>{quote.map((q, j) => <p key={j}>{inline(q, 'mq-' + key + '-' + j)}</p>)}</blockquote>)
       continue
     }
-    if (/^\\s*[-+*]\\s+/.test(line)) {
+    if (/^\s*[-+*]\s+/.test(line)) {
       const items: string[] = []
-      while (i < lines.length && /^\\s*[-+*]\\s+/.test(lines[i])) items.push(lines[i++].replace(/^\\s*[-+*]\\s+/, ''))
+      while (i < lines.length && /^\s*[-+*]\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*[-+*]\s+/, ''))
       out.push(<ul key={'md-' + key++}>{items.map((item, j) => <li key={j}>{inline(item, 'mu-' + key + '-' + j)}</li>)}</ul>)
       continue
     }
-    if (/^\\s*\\d+[.)]\\s+/.test(line)) {
+    if (/^\s*\d+[.)]\s+/.test(line)) {
       const items: string[] = []
-      while (i < lines.length && /^\\s*\\d+[.)]\\s+/.test(lines[i])) items.push(lines[i++].replace(/^\\s*\\d+[.)]\\s+/, ''))
+      while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*\d+[.)]\s+/, ''))
       out.push(<ol key={'md-' + key++}>{items.map((item, j) => <li key={j}>{inline(item, 'mo-' + key + '-' + j)}</li>)}</ol>)
       continue
     }
     const paragraph: string[] = [line]
     i++
-    while (i < lines.length && lines[i].trim() && !/^\\s*(#{1,6}\\s+|>|[-+*]\\s+|\\d+[.)]\\s+|```)/.test(lines[i])) paragraph.push(lines[i++])
+    while (i < lines.length && lines[i].trim() && !/^\s*(#{1,6}\s+|>|[-+*]\s+|\d+[.)]\s+|```)/.test(lines[i])) paragraph.push(lines[i++])
     out.push(<p key={'md-' + key++}>{paragraph.map((part, j) => <React.Fragment key={j}>{j > 0 ? ' ' : null}{inline(part, 'mp-' + key + '-' + j)}</React.Fragment>)}</p>)
   }
   return out
