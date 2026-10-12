@@ -41,7 +41,14 @@ function tipNode(node: TipNode, key: string): React.ReactNode {
     return <React.Fragment key={key}>{child}</React.Fragment>
   }
   if (node.type === 'hardBreak') return <br key={key} />
-  if (node.type === 'codeBlock') return <CodeBlockDisplay key={key} code={(node.content ?? []).map(child => child.text ?? '').join('')} language={String(node.attrs?.language ?? 'text')} />
+  if (node.type === 'codeBlock') {
+    const code = (node.content ?? []).map(child => child.text ?? '').join('')
+    const language = String(node.attrs?.language ?? 'text')
+    if (['markdown', 'md'].includes(language.toLowerCase())) {
+      return <MarkdownBlockDisplay key={key} markdown={code} />
+    }
+    return <CodeBlockDisplay key={key} code={code} language={language} />
+  }
   const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i))
   if (node.type === 'paragraph') return <p key={key}>{children}</p>
   if (node.type === 'bulletList') return <ul key={key}>{children}</ul>
