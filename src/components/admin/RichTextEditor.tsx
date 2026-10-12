@@ -168,14 +168,6 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
     if (editor.isActive('codeBlock')) editor.chain().focus().updateAttributes('codeBlock', { language }).run()
     else editor.chain().focus().insertContent({ type: 'codeBlock', attrs: { language }, content: [{ type: 'text', text: '' }] }).run()
   }
-  const insertMarkdownBlock = () => {
-    if (!editor) return
-    editor.chain().focus().insertContent({
-      type: 'codeBlock',
-      attrs: { language: 'markdown' },
-      content: [{ type: 'text', text: '# Write Markdown here\n\nUse **bold**, *italic*, lists, links, and fenced code blocks.' }],
-    }).run()
-  }
   const toggleHighlight = (color: string) => command(() => {
     if (!editor) return
     const active = editor.isActive('highlight', { color })
@@ -203,7 +195,6 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
         <button type="button" title="Insert link" onMouseDown={e => e.preventDefault()} onClick={setLink}>Link</button>
         <button type="button" title="Inline code" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Code</button>
         <button type="button" title="Insert dedicated code block" aria-label="Insert code block" onMouseDown={e => e.preventDefault()} onClick={insertCodeBlock}>＋ Code block</button>
-        <button type="button" title="Insert Markdown content block" aria-label="Insert Markdown block" onMouseDown={e => e.preventDefault()} onClick={insertMarkdownBlock}>＋ Markdown</button>
         <label className="code-language-control">Language <select aria-label="Code block language" value={String(editor?.getAttributes('codeBlock').language || 'javascript')} onChange={e => changeCodeLanguage(e.target.value)}>{languages.map(language => <option key={language.value} value={language.value}>{language.label}</option>)}</select></label>
       </div>
     </div>
