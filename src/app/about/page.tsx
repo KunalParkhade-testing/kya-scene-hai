@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
+
+export const metadata: Metadata = { title: 'About Us', description: 'Meet Kya Scene Hai? — a curiosity-driven editorial publication exploring stories, systems, culture and ideas, starting with India.', alternates: { canonical: '/about' }, openGraph: { title: 'About Kya Scene Hai?', description: 'A curiosity-driven editorial publication exploring stories, systems, culture and ideas, starting with India.', url: 'https://kya-scene-hai.vercel.app/about' } }
 
 export default function About() {
   return (
