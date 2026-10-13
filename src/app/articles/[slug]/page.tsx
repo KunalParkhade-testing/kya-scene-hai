@@ -229,10 +229,23 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     return {text:h.text,id:count?base+'-'+(count+1):base};
   });
   let headingIndex=0;
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: plainText(story.title),
+    description: plainText(story.seo_description) || plainText(story.dek),
+    mainEntityOfPage: absoluteUrl(`/articles/${story.slug}`),
+    datePublished: story.published_at || undefined,
+    dateModified: story.updated_at || story.published_at || undefined,
+    image: story.hero_image ? [story.hero_image] : undefined,
+    publisher: { '@type': 'Organization', name: SITE_NAME },
+    articleSection: story.categories?.name || undefined,
+  };
 
   return <div className="site">
     <SiteHeader/>
     <main className="article">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema).replace(/</g, '\\u003c') }} />
       <Link href="/articles" className="back">← Back to archive</Link>
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>
