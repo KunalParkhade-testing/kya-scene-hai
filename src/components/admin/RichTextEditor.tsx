@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo } from 'react'
 import { Node, mergeAttributes } from '@tiptap/core'
-import { EditorContent, useEditor } from '@tiptap/react'
+import { EditorContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
+import CodeMirrorCodeBlock from './CodeMirrorCodeBlock'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 
@@ -57,6 +58,9 @@ const CodeBlock = Node.create({
   },
   renderHTML({ HTMLAttributes }) {
     return ['pre', mergeAttributes(HTMLAttributes, { 'data-code-block': 'true', class: 'editor-code-block' }), ['code', 0]]
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeMirrorCodeBlock, { stopEvent: ({ event }) => event.target instanceof HTMLElement && !!event.target.closest('.cm-editor') })
   },
 })
 
