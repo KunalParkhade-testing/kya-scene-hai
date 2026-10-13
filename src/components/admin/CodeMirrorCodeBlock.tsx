@@ -1,7 +1,7 @@
 'use client'
 
 import CodeMirror from '@uiw/react-codemirror'
-import { StreamLanguage } from '@codemirror/language'
+import { StreamLanguage, indentUnit } from '@codemirror/language'
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { javascript } from '@codemirror/lang-javascript'
 import { python } from '@codemirror/lang-python'
@@ -18,6 +18,9 @@ import { go } from '@codemirror/lang-go'
 import { rust } from '@codemirror/lang-rust'
 import { swift } from '@codemirror/legacy-modes/mode/swift'
 import { csharp } from '@replit/codemirror-lang-csharp'
+import { insertNewlineAndIndent } from '@codemirror/commands'
+import { keymap } from '@codemirror/view'
+import { Prec } from '@codemirror/state'
 
 function languageExtension(language: string) {
   switch (language) {
@@ -86,7 +89,17 @@ export default function CodeMirrorCodeBlock({ node, editor, getPos, updateAttrib
         value={code}
         height="auto"
         minHeight="72px"
-        extensions={[languageExtension(language)]}
+        extensions={[languageExtension(language),
+          indentUnit.of('  '),
+          Prec.high(
+            keymap.of([
+              {
+                key: 'Enter',
+                run: insertNewlineAndIndent,
+              },
+            ])
+          ),
+        ]}
         onChange={updateCode}
         basicSetup={{
           lineNumbers: true,
