@@ -1,6 +1,6 @@
 # Kya Scene Hai?
 
-A visual editorial publication about India, powered by Next.js + Supabase.
+A curiosity-driven editorial publication exploring stories, systems and ideas — with India as its home ground, not its limit. Powered by Next.js + Supabase.
 
 ## Stack
 - Next.js App Router + TypeScript
