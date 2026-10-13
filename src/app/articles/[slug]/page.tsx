@@ -165,6 +165,51 @@ function formattedParagraphs(value:string) {
   return output;
 }
 
+import type { Metadata } from 'next'
+import { absoluteUrl, plainText, SITE_NAME } from '@/lib/seo'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data: story } = await supabase
+    .from('articles')
+    .select('slug, title, dek, seo_title, seo_description, hero_image, categories(name)')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle()
+
+  if (!story) {
+    return { title: 'Article not found', robots: { index: false, follow: false } }
+  }
+
+  const title = plainText(story.seo_title) || plainText(story.title) || SITE_NAME
+  const description = (plainText(story.seo_description) || plainText(story.dek) || 'Read this story from Kya Scene Hai?').slice(0, 160)
+  const url = absoluteUrl(`/articles/${story.slug}`)
+  const image = story.hero_image || undefined
+  const category = Array.isArray(story.categories) ? story.categories[0]?.name : (story.categories as {name?: string} | null)?.name
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      url,
+      siteName: SITE_NAME,
+      title,
+      description,
+      ...(image ? { images: [{ url: image, alt: plainText(story.title) }] } : {}),
+      ...(category ? { section: category } : {}),
+    },
+    twitter: {
+      card: image ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  }
+}
+
 export default async function Article({params}:{params:Promise<{slug:string}>}) {
   const {slug}=await params;
   const supabase=await createClient();
@@ -184,10 +229,23 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     return {text:h.text,id:count?base+'-'+(count+1):base};
   });
   let headingIndex=0;
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: plainText(story.title),
+    description: plainText(story.seo_description) || plainText(story.dek),
+    mainEntityOfPage: absoluteUrl(`/articles/${story.slug}`),
+    datePublished: story.published_at || undefined,
+    dateModified: story.updated_at || story.published_at || undefined,
+    image: story.hero_image ? [story.hero_image] : undefined,
+    publisher: { '@type': 'Organization', name: SITE_NAME },
+    articleSection: story.categories?.name || undefined,
+  };
 
   return <div className="site">
     <SiteHeader/>
     <main className="article">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema).replace(/</g, '\\u003c') }} />
       <Link href="/articles" className="back">← Back to archive</Link>
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>

@@ -3,6 +3,7 @@ import AdminAccessDenied from '@/components/admin/AdminAccessDenied'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
+export const metadata = { robots: { index: false, follow: false } }
 
 export default async function AdminPage() {
   const supabase = await createClient()
