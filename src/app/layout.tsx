@@ -2,6 +2,14 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo'
 
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_NAME,
+  alternateName: 'Kya Scene Hai',
+  url: `${SITE_URL}/`,
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -27,5 +35,15 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en-IN"><body>{children}</body></html>
+  return (
+    <html lang="en-IN">
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        {children}
+      </body>
+    </html>
+  )
 }
