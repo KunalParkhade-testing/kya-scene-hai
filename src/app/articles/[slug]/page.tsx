@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Image from 'next/image';
 import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
@@ -252,7 +253,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       {story.dek&&<p className="lede">{story.dek}</p>}
       <div className="meta"><span>{story.reading_minutes} min read</span><span>•</span><span>Kya Scene Hai?</span></div>
       {story.hero_image
-        ? <img className="articleimage" src={story.hero_image} alt={story.title}/>
+        ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
       {toc.length>0&&<nav className="article-toc" aria-label="In this article"><h2>IN THIS ARTICLE</h2><ol>{toc.map(item=><li key={item.id}><a href={'#'+item.id}>{item.text}</a></li>)}</ol></nav>}
       <article className="prose">
@@ -265,7 +266,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
           }
           if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
           if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
-          if(block.type==='image'&&block.url) return <figure key={i}><img className="articleimage" src={block.url} alt={block.alt||''}/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
+          if(block.type==='image'&&block.url) return <figure key={i}><Image className="articleimage" src={block.url} alt={block.alt||''} width={1200} height={800} unoptimized/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
           if(block.type==='source') return null;
           return null;
         })}

@@ -22,6 +22,14 @@
 .pagination a{text-decoration:underline;text-underline-offset:4px}
 .pagination a:hover{color:var(--blue)}
 @media(max-width:600px){.pagination{font-size:13px}.pagination>span:nth-child(2){text-align:center}}
+.sort-control{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:22px 0 24px}
+.sort-control label{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+.sort-control select,.sort-control button{min-height:42px;border:2px solid var(--ink);padding:8px 12px;font:inherit;font-weight:800}
+.sort-control select{background:var(--card);color:var(--ink)}
+.sort-control button{background:var(--ink);color:#fff;cursor:pointer}
+.sort-control button:hover{background:var(--blue)}
+.sort-control select:focus-visible,.sort-control button:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+@media(max-width:480px){.sort-control{justify-content:flex-start;flex-wrap:wrap}.sort-control label{width:100%}}
 .sources-editor h2{font-size:34px;letter-spacing:-1.5px;margin:7px 0}
 .source-edit{border:2px solid var(--ink);padding:14px;margin:14px 0;background:var(--paper)}
 .source-edit>input{display:block;width:100%;border:2px solid var(--ink);padding:12px;background:#fff;margin:8px 0;font:inherit}

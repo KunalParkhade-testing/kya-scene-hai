@@ -32,32 +32,36 @@ No database migration or environment-variable change is required.
 ### Archive and topic pagination
 
 - `/articles` and `/topics` display up to 20 stories per page.
+- Both lists default to newest-first and offer an oldest-first sort control.
 - The database applies the topic filter and pagination before returning rows; it no longer needs to fetch the entire published archive to filter topics in application memory.
 - Stable secondary slug ordering prevents stories with the same publication timestamp from shifting unpredictably between pages.
 - Previous/next navigation appears when there is more than one page.
-- Topic filters are preserved when navigating between pages.
-- Canonical and Open Graph URLs reflect page and topic query parameters.
+- Topic filters and the selected sort order are preserved when navigating between pages; changing the sort starts at page 1.
+- Canonical and Open Graph URLs reflect page, topic, and non-default sort parameters.
 - Requests for pages beyond the current result set redirect to the last valid page (or the unpaged route when there are no results).
 
 ### Lint and related code-quality fixes
 
 - `npm run lint` now calls ESLint directly and uses the Next.js Core Web Vitals and TypeScript flat configs.
 - Existing lint errors encountered while enabling the command were corrected, including unescaped apostrophes, internal anchors that should use Next.js `Link`, unsafe `any` content-block handling, and a render-time mutable accumulator in code highlighting.
-- The image optimization and unused CodeMirror parameter notices remain as non-blocking lint warnings.
+- Article and editorial-studio images use Next.js `Image` with explicit dimensions. They remain unoptimized because article image URLs can be entered from external sources, while the existing styling, lazy loading, and accepted URL behavior are preserved.
+- The unused CodeMirror node-view parameter was removed.
 
 ## Visual changes to check
 
 1. **Archive:** Open `/articles`. The existing title, story-card design, and footer should remain; when there are more than 20 published stories, a pager appears below the cards. Use **Older stories** and **Newer stories** to check navigation.
 2. **Topic filter:** Open `/topics`, choose a topic chip, and verify only stories in that topic are shown. With more than 20 stories in that topic, the pager should keep the selected topic while moving between pages.
-3. **End-of-list behavior:** Request an out-of-range URL such as `/articles?page=999` or `/topics?topic=systems&page=999`. It should redirect to the last valid page.
-4. **Editorial Studio:** Edit a published story, change a field, save it, and confirm its published date remains unchanged in storage. Change a draft to published and confirm it receives a publication date. Check the visible success/error message if editorial data fails to load.
-5. **Error and navigation links:** Check the header and global error screen links navigate normally using app routing.
+3. **Sort order:** On both list pages, change the control to **Oldest first** and apply. Confirm stories are ordered from oldest to newest, the URL includes `sort=oldest`, and the page resets to 1. Switch back to **Newest first** and confirm newest-first is restored.
+4. **Topic + sort:** On `/topics`, select a topic, choose **Oldest first**, then page forward/back if pagination is available. The topic and sort order should persist.
+5. **End-of-list behavior:** Request an out-of-range URL such as `/articles?page=999` or `/topics?topic=systems&page=999`. It should redirect to the last valid page.
+6. **Editorial Studio:** Edit a published story, change a field, save it, and confirm its published date remains unchanged in storage. Change a draft to published and confirm it receives a publication date. Check the visible success/error message if editorial data fails to load.
+7. **Error and navigation links:** Check the header and global error screen links navigate normally using app routing.
 
 The pager is intentionally absent when there are 20 or fewer matching stories. In that case, validate it with a test dataset containing more than 20 published articles.
 
 ## Validation performed
 
 - `npm run build` — passed.
-- `npm run lint` — passed with zero errors; five existing-style warnings remain (four raw `<img>` usages and one unused CodeMirror parameter).
+- `npm run lint` — passed with no warnings.
 - Production-server smoke checks — `/articles`, `/topics`, topic-filtered pages, and `/sitemap.xml` returned HTTP 200; out-of-range pagination returned redirects.
 - `git diff --check` — passed.

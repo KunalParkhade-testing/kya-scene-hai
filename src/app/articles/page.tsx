@@ -12,20 +12,25 @@ const description = 'Explore stories, systems, culture and ideas shaping the wor
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; sort?: string }>
 }): Promise<Metadata> {
-  const { page: pageParam } = await searchParams
+  const { page: pageParam, sort: sortParam } = await searchParams
   const requestedPage = Number.parseInt(pageParam ?? '1', 10)
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 1 ? requestedPage : 1
+  const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
+  const params = new URLSearchParams()
+  if (sort === 'oldest') params.set('sort', sort)
+  if (page > 1) params.set('page', String(page))
+  const query = params.size ? `?${params}` : ''
 
   return {
     title: 'Articles & Stories',
     description,
-    alternates: { canonical: page > 1 ? `/articles?page=${page}` : '/articles' },
+    alternates: { canonical: `/articles${query}` },
     openGraph: {
       title: 'Articles & Stories | Kya Scene Hai?',
       description,
-      url: `https://kya-scene-hai.vercel.app/articles${page > 1 ? `?page=${page}` : ''}`,
+      url: `https://kya-scene-hai.vercel.app/articles${query}`,
     },
   }
 }
@@ -33,11 +38,12 @@ export async function generateMetadata({
 export default async function Articles({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; sort?: string }>
 }) {
-  const { page: pageParam } = await searchParams
+  const { page: pageParam, sort: sortParam } = await searchParams
   const requestedPage = Number.parseInt(pageParam ?? '1', 10)
   const requestedPageNumber = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+  const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
   const supabase = await createClient()
   const { count, error: countError } = await supabase
     .from('articles')
@@ -48,14 +54,23 @@ export default async function Articles({
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
   if (requestedPageNumber > Math.max(totalPages, 1)) {
-    redirect(totalPages ? `/articles?page=${totalPages}` : '/articles')
+    const params = new URLSearchParams()
+    if (sort === 'oldest') params.set('sort', sort)
+    if (totalPages) params.set('page', String(totalPages))
+    redirect(`/articles${params.size ? `?${params}` : ''}`)
   }
   const page = requestedPageNumber
+  const pageHref = (targetPage: number) => {
+    const params = new URLSearchParams()
+    if (sort === 'oldest') params.set('sort', sort)
+    if (targetPage > 1) params.set('page', String(targetPage))
+    return `/articles${params.size ? `?${params}` : ''}`
+  }
   const { data, error } = await supabase
     .from('articles')
     .select('*, categories(name,slug)')
     .eq('status', 'published')
-    .order('published_at', { ascending: false })
+    .order('published_at', { ascending: sort === 'oldest', nullsFirst: false })
     .order('slug')
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
 
@@ -69,6 +84,14 @@ export default async function Articles({
       <main className="archive">
         <div className="kicker">The archive</div>
         <h1>ALL THE<br />SCENES.</h1>
+        <form className="sort-control" action="/articles" method="get">
+          <label htmlFor="article-sort">Sort stories</label>
+          <select id="article-sort" name="sort" defaultValue={sort}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <button type="submit">Apply</button>
+        </form>
         <div className="grid">
           {stories.map((story, index) => (
             <Link className="card" href={`/articles/${story.slug}`} key={story.slug}>
@@ -87,9 +110,9 @@ export default async function Articles({
         {!stories.length && <div className="empty">No published stories yet.</div>}
         {totalPages > 1 && (
           <nav className="pagination" aria-label="Article pages">
-            {page > 1 ? <Link href={page === 2 ? '/articles' : `/articles?page=${page - 1}`}>← Newer stories</Link> : <span />}
+            {page > 1 ? <Link href={pageHref(page - 1)}>{sort === 'oldest' ? '← Older stories' : '← Newer stories'}</Link> : <span />}
             <span>Page {page} of {totalPages}</span>
-            {page < totalPages ? <Link href={`/articles?page=${page + 1}`}>Older stories →</Link> : <span />}
+            {page < totalPages ? <Link href={pageHref(page + 1)}>{sort === 'oldest' ? 'Newer stories →' : 'Older stories →'}</Link> : <span />}
           </nav>
         )}
       </main>

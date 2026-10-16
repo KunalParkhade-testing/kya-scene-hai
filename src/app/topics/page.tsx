@@ -20,14 +20,16 @@ const description = 'Browse Kya Scene Hai? stories about systems, economics, cul
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string; page?: string }>
+  searchParams: Promise<{ topic?: string; page?: string; sort?: string }>
 }): Promise<Metadata> {
-  const { topic, page: pageParam } = await searchParams
+  const { topic, page: pageParam, sort: sortParam } = await searchParams
   const requestedPage = Number.parseInt(pageParam ?? '1', 10)
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 1 ? requestedPage : 1
+  const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
   const query = new URLSearchParams()
 
   if (topic) query.set('topic', topic)
+  if (sort === 'oldest') query.set('sort', sort)
   if (page > 1) query.set('page', String(page))
 
   const canonical = `/topics${query.size ? `?${query}` : ''}`
@@ -47,11 +49,12 @@ export async function generateMetadata({
 export default async function Topics({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string; page?: string }>
+  searchParams: Promise<{ topic?: string; page?: string; sort?: string }>
 }) {
-  const { topic, page: pageParam } = await searchParams
+  const { topic, page: pageParam, sort: sortParam } = await searchParams
   const requestedPage = Number.parseInt(pageParam ?? '1', 10)
   const requestedPageNumber = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+  const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
   const supabase = await createClient()
   const selection = topic
     ? '*, categories!inner(name,slug)'
@@ -70,6 +73,7 @@ export default async function Topics({
   if (requestedPageNumber > Math.max(totalPages, 1)) {
     const params = new URLSearchParams()
     if (topic) params.set('topic', topic)
+    if (sort === 'oldest') params.set('sort', sort)
     if (totalPages) params.set('page', String(totalPages))
     redirect(`/topics${params.size ? `?${params}` : ''}`)
   }
@@ -82,7 +86,7 @@ export default async function Topics({
   if (topic) query = query.eq('categories.slug', topic)
 
   const { data, error } = await query
-    .order('published_at', { ascending: false })
+    .order('published_at', { ascending: sort === 'oldest', nullsFirst: false })
     .order('slug')
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
 
@@ -92,6 +96,7 @@ export default async function Topics({
   const pageHref = (targetPage: number) => {
     const params = new URLSearchParams()
     if (topic) params.set('topic', topic)
+    if (sort === 'oldest') params.set('sort', sort)
     if (targetPage > 1) params.set('page', String(targetPage))
     return `/topics${params.size ? `?${params}` : ''}`
   }
@@ -104,9 +109,18 @@ export default async function Topics({
         <h1>GO WHERE<br />CURIOSITY GOES.</h1>
         <div className="topics">
           {topics.map(([slug, name]) => (
-            <Link className="topic" href={`/topics?topic=${slug}`} key={slug}>{name}</Link>
+            <Link className="topic" href={`/topics?topic=${slug}${sort === 'oldest' ? '&sort=oldest' : ''}`} key={slug}>{name}</Link>
           ))}
         </div>
+        <form className="sort-control" action="/topics" method="get">
+          {topic && <input type="hidden" name="topic" value={topic} />}
+          <label htmlFor="topic-sort">Sort stories</label>
+          <select id="topic-sort" name="sort" defaultValue={sort}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+          <button type="submit">Apply</button>
+        </form>
         <div className="grid topic-grid">
           {stories.map((story, index) => (
             <Link className="card" href={`/articles/${story.slug}`} key={story.slug}>
@@ -124,9 +138,9 @@ export default async function Topics({
         {!stories.length && <div className="empty">Nothing published in this rabbit hole yet.</div>}
         {totalPages > 1 && (
           <nav className="pagination" aria-label="Topic story pages">
-            {page > 1 ? <Link href={pageHref(page - 1)}>← Newer stories</Link> : <span />}
+            {page > 1 ? <Link href={pageHref(page - 1)}>{sort === 'oldest' ? '← Older stories' : '← Newer stories'}</Link> : <span />}
             <span>Page {page} of {totalPages}</span>
-            {page < totalPages ? <Link href={pageHref(page + 1)}>Older stories →</Link> : <span />}
+            {page < totalPages ? <Link href={pageHref(page + 1)}>{sort === 'oldest' ? 'Newer stories →' : 'Older stories →'}</Link> : <span />}
           </nav>
         )}
       </main>
