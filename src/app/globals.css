@@ -18,6 +18,10 @@
 .source-verified{display:inline-block;margin-left:8px;padding:3px 7px;background:#dcebd4;border:1px solid #315d2c;color:#244820;font:800 10px Arial,sans-serif;text-transform:uppercase;letter-spacing:.5px}
 .source-note{margin:22px 0 0;padding-top:14px;border-top:1px solid var(--line);font:13px/1.55 Arial,sans-serif;color:var(--muted)}
 .sources-editor{margin-top:32px;padding:22px;border:2px solid var(--ink);background:#fffaf0}
+.pagination{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:36px;padding-top:18px;border-top:2px solid var(--ink);font-weight:900}
+.pagination a{text-decoration:underline;text-underline-offset:4px}
+.pagination a:hover{color:var(--blue)}
+@media(max-width:600px){.pagination{font-size:13px}.pagination>span:nth-child(2){text-align:center}}
 .sources-editor h2{font-size:34px;letter-spacing:-1.5px;margin:7px 0}
 .source-edit{border:2px solid var(--ink);padding:14px;margin:14px 0;background:var(--paper)}
 .source-edit>input{display:block;width:100%;border:2px solid var(--ink);padding:12px;background:#fff;margin:8px 0;font:inherit}

@@ -218,9 +218,9 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   if(!story) notFound();
 
   const allBlocks=story.body??[];
-  const sources=allBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='source'&&b.verified&&b.title?.trim()&&b.url?.trim()) as {type:'source';title:string;url:string;publisher?:string;verified?:boolean}[];
-  const contentBlocks=allBlocks.filter((b:any)=>!(typeof b==='object'&&b?.type==='source'));
-  const headings=contentBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='heading'&&b.text?.trim()) as {type:'heading';text:string}[];
+  const sources=allBlocks.filter((block): block is Extract<ArticleBlock,{type:'source'}> => typeof block==='object'&&block.type==='source'&&!!block.verified&&!!block.title?.trim()&&!!block.url?.trim());
+  const contentBlocks=allBlocks.filter((block): block is Exclude<ArticleBlock,Extract<ArticleBlock,{type:'source'}>> => typeof block==='string'||block.type!=='source');
+  const headings=contentBlocks.filter((block): block is {type:'heading';text:string} => typeof block==='object'&&block.type==='heading'&&!!block.text?.trim());
   const headingCounts=new Map<string,number>();
   const toc=headings.map(h=>{
     const base=headingId(h.text)||'section';

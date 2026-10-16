@@ -10,8 +10,8 @@ export default function About() {
       <SiteHeader />
       <main className="article">
         <div className="kicker">About Kya Scene Hai?</div>
-        <h1>THERE'S MORE<br />TO THE SCENE.</h1>
-        <p className="lede">Curious about what’s happening — and why? You’re in the right place.</p>
+        <h1>THERE&apos;S MORE<br />TO THE SCENE.</h1>
+        <p className="lede">Curious about what&apos;s happening — and why? You&apos;re in the right place.</p>
         <article className="prose">
           <p>Kya Scene Hai? is a curiosity-driven editorial publication exploring the stories, systems, culture and ideas that shape the world around us. India is our home ground, not our limit.</p>
           <p>We look beyond what happened to understand how things work, how they came to be, and why they matter. That might mean unpacking a public system, tracing the history behind a tradition, exploring a scientific idea, or following a question somewhere unexpected.</p>
