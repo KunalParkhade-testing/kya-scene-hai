@@ -169,6 +169,20 @@ function formattedParagraphs(value:string) {
 import type { Metadata } from 'next'
 import { absoluteUrl, plainText, SITE_NAME } from '@/lib/seo'
 
+const EDITORIAL_AUTHOR = 'Kya Scene Hai? Editorial Desk'
+
+function displayDate(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
@@ -219,6 +233,9 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   if(!story) notFound();
 
   const allBlocks=story.body??[];
+  const publishedDate=displayDate(story.published_at);
+  const updatedDate=displayDate(story.updated_at);
+  const hasUpdatedDate=Boolean(updatedDate&&story.updated_at&&story.published_at&&new Date(story.updated_at).getTime()>new Date(story.published_at).getTime());
   const sources=allBlocks.filter((block): block is Extract<ArticleBlock,{type:'source'}> => typeof block==='object'&&block.type==='source'&&!!block.verified&&!!block.title?.trim()&&!!block.url?.trim());
   const contentBlocks=allBlocks.filter((block): block is Exclude<ArticleBlock,Extract<ArticleBlock,{type:'source'}>> => typeof block==='string'||block.type!=='source');
   const headings=contentBlocks.filter((block): block is {type:'heading';text:string} => typeof block==='object'&&block.type==='heading'&&!!block.text?.trim());
@@ -239,6 +256,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     datePublished: story.published_at || undefined,
     dateModified: story.updated_at || story.published_at || undefined,
     image: story.hero_image ? [story.hero_image] : undefined,
+    author: { '@type': 'Organization', name: EDITORIAL_AUTHOR },
     publisher: { '@type': 'Organization', name: SITE_NAME },
     articleSection: story.categories?.name || undefined,
   };
@@ -251,7 +269,23 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>
       {story.dek&&<p className="lede">{story.dek}</p>}
-      <div className="meta"><span>{story.reading_minutes} min read</span><span>•</span><span>Kya Scene Hai?</span></div>
+      <div className="meta article-byline">
+        <span>{story.reading_minutes} min read</span>
+        <span aria-hidden="true">•</span>
+        <span>By {EDITORIAL_AUTHOR}</span>
+        {publishedDate && (
+          <>
+            <span aria-hidden="true">•</span>
+            <span>Published <time dateTime={story.published_at ?? undefined}>{publishedDate}</time></span>
+          </>
+        )}
+        {hasUpdatedDate && updatedDate && (
+          <>
+            <span aria-hidden="true">•</span>
+            <span>Updated <time dateTime={story.updated_at}>{updatedDate}</time></span>
+          </>
+        )}
+      </div>
       {story.hero_image
         ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}

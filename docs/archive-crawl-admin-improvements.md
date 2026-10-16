@@ -8,6 +8,12 @@ No database migration or environment-variable change is required.
 
 ## Changes
 
+### Article byline and dates
+
+- Article pages display the "Kya Scene Hai editorial team" byline and the stored publication date.
+- A visible updated date is shown only when the stored update timestamp is later than publication.
+- Article structured data identifies the same editorial team as author and keeps the existing publisher, publication date, and modification date fields.
+
 ### Editorial publication dates
 
 - Existing stories load their stored `published_at` into the editor.
@@ -56,6 +62,7 @@ No database migration or environment-variable change is required.
 5. **End-of-list behavior:** Request an out-of-range URL such as `/articles?page=999` or `/topics?topic=systems&page=999`. It should redirect to the last valid page.
 6. **Editorial Studio:** Edit a published story, change a field, save it, and confirm its published date remains unchanged in storage. Change a draft to published and confirm it receives a publication date. Check the visible success/error message if editorial data fails to load.
 7. **Error and navigation links:** Check the header and global error screen links navigate normally using app routing.
+8. **Article byline and dates:** Open a published article. Confirm the editorial-team byline and publication date are visible; when its update date is later, confirm the updated date appears too. Inspect the rendered Article JSON-LD to confirm author and dates match the visible attribution.
 
 The pager is intentionally absent when there are 20 or fewer matching stories. In that case, validate it with a test dataset containing more than 20 published articles.
 
