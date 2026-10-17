@@ -94,6 +94,14 @@ function highlightLine(line: string, language: string, wasInBlockComment: boolea
   }
   return { nodes: tokens.map((token, index) => token.kind ? <span className={token.kind} key={index}>{token.text}</span> : token.text), inBlockComment }
 }
+function highlightCode(code: string, language: string) {
+  let inBlockComment = false
+  return code.split('\n').map((line) => {
+    const highlighted = highlightLine(line, language, inBlockComment)
+    inBlockComment = highlighted.inBlockComment
+    return highlighted.nodes
+  })
+}
 export default function CodeBlockDisplay({ code, language = 'text' }: Props) {
   const [copied, setCopied] = useState(false)
   const lang = canonical(language)
@@ -106,12 +114,7 @@ export default function CodeBlockDisplay({ code, language = 'text' }: Props) {
       setCopied(false)
     }
   }
-  let inBlockComment = false
-  const lines = code.split('\n').map((line) => {
-    const highlighted = highlightLine(line, lang, inBlockComment)
-    inBlockComment = highlighted.inBlockComment
-    return highlighted.nodes
-  })
+  const lines = highlightCode(code, lang)
   return <div className="published-code-block">
     <div className="code-block-header">
       <span className="code-language">{language || 'Plain text'}</span>

@@ -66,7 +66,7 @@ function languageExtension(language: string) {
   }
 }
 
-export default function CodeMirrorCodeBlock({ node, editor, getPos, updateAttributes }: NodeViewProps) {
+export default function CodeMirrorCodeBlock({ node, editor, getPos }: NodeViewProps) {
   const language = String(node.attrs.language || 'text')
   const code = node.textContent
 

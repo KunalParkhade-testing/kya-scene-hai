@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Image from 'next/image';
 import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
@@ -168,6 +169,20 @@ function formattedParagraphs(value:string) {
 import type { Metadata } from 'next'
 import { absoluteUrl, plainText, SITE_NAME } from '@/lib/seo'
 
+const EDITORIAL_AUTHOR = 'Kya Scene Hai? Editorial Desk'
+
+function displayDate(value: string | null | undefined) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const supabase = await createClient()
@@ -218,9 +233,12 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   if(!story) notFound();
 
   const allBlocks=story.body??[];
-  const sources=allBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='source'&&b.verified&&b.title?.trim()&&b.url?.trim()) as {type:'source';title:string;url:string;publisher?:string;verified?:boolean}[];
-  const contentBlocks=allBlocks.filter((b:any)=>!(typeof b==='object'&&b?.type==='source'));
-  const headings=contentBlocks.filter((b:any)=>typeof b==='object'&&b?.type==='heading'&&b.text?.trim()) as {type:'heading';text:string}[];
+  const publishedDate=displayDate(story.published_at);
+  const updatedDate=displayDate(story.updated_at);
+  const hasUpdatedDate=Boolean(updatedDate&&story.updated_at&&story.published_at&&new Date(story.updated_at).getTime()>new Date(story.published_at).getTime());
+  const sources=allBlocks.filter((block): block is Extract<ArticleBlock,{type:'source'}> => typeof block==='object'&&block.type==='source'&&!!block.verified&&!!block.title?.trim()&&!!block.url?.trim());
+  const contentBlocks=allBlocks.filter((block): block is Exclude<ArticleBlock,Extract<ArticleBlock,{type:'source'}>> => typeof block==='string'||block.type!=='source');
+  const headings=contentBlocks.filter((block): block is {type:'heading';text:string} => typeof block==='object'&&block.type==='heading'&&!!block.text?.trim());
   const headingCounts=new Map<string,number>();
   const toc=headings.map(h=>{
     const base=headingId(h.text)||'section';
@@ -238,6 +256,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     datePublished: story.published_at || undefined,
     dateModified: story.updated_at || story.published_at || undefined,
     image: story.hero_image ? [story.hero_image] : undefined,
+    author: { '@type': 'Organization', name: EDITORIAL_AUTHOR },
     publisher: { '@type': 'Organization', name: SITE_NAME },
     articleSection: story.categories?.name || undefined,
   };
@@ -250,9 +269,25 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>
       {story.dek&&<p className="lede">{story.dek}</p>}
-      <div className="meta"><span>{story.reading_minutes} min read</span><span>•</span><span>Kya Scene Hai?</span></div>
+      <div className="meta article-byline">
+        <span>{story.reading_minutes} min read</span>
+        <span aria-hidden="true">•</span>
+        <span>By {EDITORIAL_AUTHOR}</span>
+        {publishedDate && (
+          <>
+            <span aria-hidden="true">•</span>
+            <span>Published <time dateTime={story.published_at ?? undefined}>{publishedDate}</time></span>
+          </>
+        )}
+        {hasUpdatedDate && updatedDate && (
+          <>
+            <span aria-hidden="true">•</span>
+            <span>Updated <time dateTime={story.updated_at}>{updatedDate}</time></span>
+          </>
+        )}
+      </div>
       {story.hero_image
-        ? <img className="articleimage" src={story.hero_image} alt={story.title}/>
+        ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
       {toc.length>0&&<nav className="article-toc" aria-label="In this article"><h2>IN THIS ARTICLE</h2><ol>{toc.map(item=><li key={item.id}><a href={'#'+item.id}>{item.text}</a></li>)}</ol></nav>}
       <article className="prose">
@@ -265,7 +300,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
           }
           if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
           if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
-          if(block.type==='image'&&block.url) return <figure key={i}><img className="articleimage" src={block.url} alt={block.alt||''}/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
+          if(block.type==='image'&&block.url) return <figure key={i}><Image className="articleimage" src={block.url} alt={block.alt||''} width={1200} height={800} unoptimized/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
           if(block.type==='source') return null;
           return null;
         })}
