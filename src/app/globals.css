@@ -75,7 +75,7 @@ nav.article-toc ol{min-width:0}
 .rich-editable mark[data-highlight="blue"]{background:#c7dcff;color:#15366e}
 .rich-editable mark[data-highlight="pink"]{background:#ffc7df;color:#702044}
 .rich-editable mark[data-highlight="orange"]{background:#ffd0a3;color:#71370e}
-.rich-editable mark[data-highlight="red"]{background:#ffb5ad;color:#6b1717}
+.rich-editable mark[data-highlight="red"]{background:#8b1e1e;color:#fff}
 .rich-editable code{background:#eee8dc;padding:2px 4px;border-radius:3px;font-family:ui-monospace,monospace}
 @media(max-width:760px){nav.article-toc{grid-template-columns:1fr;gap:12px;padding:22px}nav.article-toc h2{margin:0}nav.article-toc ol{grid-template-columns:1fr;gap:10px}.rich-toolbar{gap:5px;padding:6px}.rich-toolbar-divider{display:none}.rich-toolbar button,.highlight-picker{min-height:34px;padding:6px 8px}.rich-editable{min-height:125px;padding:12px}}
 
@@ -94,11 +94,11 @@ nav.article-toc ol{min-width:0}
 .swatch-blue span { background: #c7dcff; }
 .swatch-pink span { background: #ffc7df; }
 .swatch-orange span { background: #ffd0a3; }
-.swatch-red span { background: #ffb5ad; }
+.swatch-red span { background: #8b1e1e; }
 .rich-toolbar .highlight-swatch:hover{transform:scale(1.08);background:#fff}
 
 /* Published article highlight colours */
-.prose mark.highlight-red{background:#ffb5ad;color:#6b1717}
+.prose mark.highlight-red{background:#8b1e1e;color:#fff}
 
 
 /* Newsletter signup feedback */
@@ -126,7 +126,7 @@ nav.article-toc ol{min-width:0}
 .rich-editable mark[data-color="blue"],.rich-editable mark[data-color="#c7dcff"]{background:#c7dcff;color:#15366e}
 .rich-editable mark[data-color="pink"],.rich-editable mark[data-color="#ffc7df"]{background:#ffc7df;color:#702044}
 .rich-editable mark[data-color="orange"],.rich-editable mark[data-color="#ffd0a3"]{background:#ffd0a3;color:#71370e}
-.rich-editable mark[data-color="red"],.rich-editable mark[data-color="#ffb5ad"]{background:#ffb5ad;color:#6b1717}
+.rich-editable mark[data-color="red"],.rich-editable mark[data-color="#8b1e1e"],.rich-editable mark[data-color="#ffb5ad"]{background:#8b1e1e;color:#fff}
 .rich-editable .is-empty:first-child::before{content:attr(data-placeholder);float:left;color:#8b867c;pointer-events:none;height:0}
 .rich-toolbar button[aria-pressed="true"]{outline:2px solid var(--blue);outline-offset:1px}
 
