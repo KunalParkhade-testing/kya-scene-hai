@@ -218,3 +218,5 @@ nav.article-toc ol{min-width:0}
 .cm-code-block-node .cm-tooltip-autocomplete ul li[aria-selected]{background:#393f4d;color:#ffd83d}
 .cm-code-block-node .cm-foldGutter .cm-gutterElement{cursor:pointer}
 @media(max-width:760px){.cm-code-block-node .cm-editor{font-size:12px}.cm-code-block-label{padding:6px 10px}}
+
+.articleimage{height:auto;max-height:none;object-fit:contain}
