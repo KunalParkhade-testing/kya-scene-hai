@@ -17,7 +17,7 @@ const highlightClass: Record<string, string> = {
   '#c7dcff': 'highlight-blue', blue: 'highlight-blue',
   '#ffc7df': 'highlight-pink', pink: 'highlight-pink',
   '#ffd0a3': 'highlight-orange', orange: 'highlight-orange',
-  '#ffb5ad': 'highlight-red', red: 'highlight-red',
+  '#8b1e1e': 'highlight-red', '#ffb5ad': 'highlight-red', red: 'highlight-red',
 }
 type TipNode = { type?: string; text?: string; attrs?: Record<string, unknown>; marks?: { type: string; attrs?: Record<string, unknown> }[]; content?: TipNode[] }
 function tipNode(node: TipNode, key: string): React.ReactNode {

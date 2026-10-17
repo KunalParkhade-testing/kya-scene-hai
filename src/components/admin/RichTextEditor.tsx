@@ -15,7 +15,7 @@ const colors = [
   { name: 'Blue', value: '#c7dcff' },
   { name: 'Pink', value: '#ffc7df' },
   { name: 'Orange', value: '#ffd0a3' },
-  { name: 'Red', value: '#ffb5ad' },
+  { name: 'Red', value: '#8b1e1e' },
 ]
 const colorNames: Record<string, string> = Object.fromEntries(colors.map(c => [c.value, c.name.toLowerCase()]))
 const languages = [
