@@ -298,7 +298,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
             const item=block.text?.trim()?toc[headingIndex++]:undefined;
             return block.text ? <h2 id={item?.id} key={i}>{inlineText(block.text)}</h2> : null;
           }
-          if(block.type==='quote') return block.text ? <blockquote key={i}>{inlineText(block.text)}</blockquote> : null;
+          if(block.type==='quote') return block.text ? <blockquote key={i}><span className="quote-text">{inlineText(block.text)}</span>{block.attribution?.trim()&&<footer className="quote-attribution">— {block.attribution.trim()}</footer>}</blockquote> : null;
           if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
           if(block.type==='image'&&block.url) return <figure key={i}><Image className="articleimage" src={block.url} alt={block.alt||''} width={1200} height={800} unoptimized/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
           if(block.type==='source') return null;
