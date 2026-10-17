@@ -14,8 +14,9 @@ const topics = [
   ['science', 'Science'],
   ['infrastructure', 'Infrastructure'],
   ['what-if', 'What If?'],
+  ['politics', 'Politics'],
 ]
-const description = 'Browse Kya Scene Hai? stories about systems, economics, culture, science, infrastructure and big questions.'
+const description = 'Browse Kya Scene Hai? stories about systems, politics, economics, culture, science, infrastructure and big questions.'
 
 export async function generateMetadata({
   searchParams,
