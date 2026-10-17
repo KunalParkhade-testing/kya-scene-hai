@@ -220,3 +220,6 @@ nav.article-toc ol{min-width:0}
 @media(max-width:760px){.cm-code-block-node .cm-editor{font-size:12px}.cm-code-block-label{padding:6px 10px}}
 
 .articleimage{height:auto;max-height:none;object-fit:contain}
+.prose blockquote{border-left:0;padding-left:0;margin:1.2em 0}
+.prose blockquote .quote-text{display:block;border-left:6px solid var(--red);padding-left:22px}
+.prose blockquote .quote-attribution{display:block;border:0;padding:12px 0 0;margin:0;text-align:right;font:600 14px/1.5 Arial,sans-serif}
