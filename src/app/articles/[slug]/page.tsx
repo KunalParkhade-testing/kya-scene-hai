@@ -232,6 +232,37 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   const story=data as Article|null;
   if(!story) notFound();
 
+  let relatedStories: Article[] = []
+  if (story.category_id) {
+    const { data: sameTopic, error: relatedError } = await supabase
+      .from('articles')
+      .select('*, categories(name,slug)')
+      .eq('status', 'published')
+      .eq('category_id', story.category_id)
+      .neq('id', story.id)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('slug')
+      .limit(4)
+
+    if (relatedError) throw relatedError
+    relatedStories = (sameTopic ?? []) as Article[]
+  }
+
+  const showingRelated = relatedStories.length > 0
+  if (!showingRelated) {
+    const { data: latestStories, error: latestError } = await supabase
+      .from('articles')
+      .select('*, categories(name,slug)')
+      .eq('status', 'published')
+      .neq('id', story.id)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('slug')
+      .limit(4)
+
+    if (latestError) throw latestError
+    relatedStories = (latestStories ?? []) as Article[]
+  }
+
   const allBlocks=story.body??[];
   const publishedDate=displayDate(story.published_at);
   const updatedDate=displayDate(story.updated_at);
@@ -286,6 +317,12 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
           </>
         )}
       </div>
+      {story.editorial_note?.trim() && (
+        <aside className="editorial-note" aria-label="Editorial note">
+          <h2>Editorial note</h2>
+          <p>{story.editorial_note}</p>
+        </aside>
+      )}
       {story.hero_image
         ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
@@ -306,6 +343,32 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
         })}
       </article>
       {sources.length>0&&<section className="article-sources"><h2>SOURCES &amp; FURTHER READING</h2><ol>{sources.map((source,i)=><li key={i}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>{source.publisher&&<span className="source-publisher"> — {source.publisher}</span>}{source.verified&&<span className="source-verified">Verified</span>}</li>)}</ol><p className="source-note">Sources are provided for readers to inspect. “Verified” means the editorial team checked the linked material directly; it is not an endorsement of every claim on the source website.</p></section>}
+      {relatedStories.length > 0 && (
+        <section className="related-articles" aria-labelledby="related-articles-title">
+          <div className="sectiontop">
+            <div>
+              <div className="kicker">{showingRelated ? 'Keep exploring' : 'From the archive'}</div>
+              <h2 id="related-articles-title">{showingRelated ? 'RELATED STORIES' : 'LATEST STORIES'}</h2>
+            </div>
+          </div>
+          <div className="grid">
+            {relatedStories.map((related, index) => (
+              <Link className="card" href={`/articles/${related.slug}`} key={related.slug}>
+                <div className={`cover ${['blue', 'yellow', 'red'][index % 3]}`}>
+                  <span className="tag">{related.categories?.name}</span>
+                  <strong>{related.hero_text}</strong>
+                </div>
+                <div className="cardbody">
+                  <h3>{related.title}</h3>
+                  <p>{related.dek}</p>
+                  <div className="read">{related.reading_minutes} min read · Open story →</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Link className="related-more" href="/articles">Show more articles →</Link>
+        </section>
+      )}
     </main>
     <SiteFooter/>
   </div>;
