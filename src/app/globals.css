@@ -56,6 +56,17 @@
 nav.article-toc{height:auto;min-height:0;display:grid;grid-template-columns:minmax(190px,.75fr) minmax(0,2fr);align-items:start;justify-content:initial;gap:0 30px;border:2px solid var(--ink);border-bottom:2px solid var(--ink);box-sizing:border-box;overflow:visible}
 nav.article-toc h2{margin:8px 0 0}
 nav.article-toc ol{min-width:0}
+.editorial-note{margin:28px 0 8px;padding:20px 24px;border-left:6px solid var(--red);background:#fffaf0}
+.editorial-note h2{margin:0 0 8px;font-size:13px;letter-spacing:1.2px;text-transform:uppercase}
+.editorial-note p{margin:0;color:#514c44;font-size:16px;line-height:1.6;white-space:pre-wrap}
+.related-articles{margin-top:70px}
+.related-articles .sectiontop{margin-bottom:22px}
+.related-articles .sectiontop h2{font-size:clamp(30px,5vw,48px);letter-spacing:-2px;margin:8px 0 0}
+.related-articles .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.related-articles .card{min-height:0}
+.related-articles .cover{min-height:160px}
+.related-more{display:inline-block;margin-top:24px;padding:13px 18px;border:2px solid var(--ink);background:var(--yellow);font-weight:900}
+@media(max-width:650px){.related-articles .grid{grid-template-columns:1fr}.editorial-note{padding:17px 18px}}
 .rich-editor{border:2px solid var(--ink);background:#fff;margin:8px 0 12px}
 .rich-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--line);background:#fffaf0}
 .rich-toolgroup{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
