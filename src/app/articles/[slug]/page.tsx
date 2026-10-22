@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import CodeBlockDisplay from '@/components/CodeBlockDisplay';
+import ArticleContentsNav from '@/components/ArticleContentsNav';
 import ReadingProgressBar from '@/components/ReadingProgressBar';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
@@ -359,12 +360,14 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     return null;
   })
 
-  return <div className="site">
+  return <div className="site article-site">
     <SiteHeader/>
     <main className="article">
       <ReadingProgressBar />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema).replace(/</g, '\\u003c') }} />
-      <div id="article-reading-content">
+      <div className="article-reading-layout" id="article-reading-content">
+      {toc.length > 0 && <ArticleContentsNav sections={toc} />}
+      <div className="article-main-column">
       <Link href="/articles" className="back">← Back to archive</Link>
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>
@@ -395,11 +398,11 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       {story.hero_image
         ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized loading="eager"/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
-      {toc.length>0&&<nav className="article-toc" aria-label="In this article"><h2>IN THIS ARTICLE</h2><ol>{toc.map(item=><li className={`article-toc-level-${item.level}`} key={item.id}><a href={'#'+item.id}>{item.text}</a></li>)}</ol></nav>}
       <article className="prose">
         {renderedContent}
       </article>
       {sources.length>0&&<section className="article-sources"><h2>SOURCES &amp; FURTHER READING</h2><ol>{sources.map((source,i)=><li key={i}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>{source.publisher&&<span className="source-publisher"> — {source.publisher}</span>}{source.verified&&<span className="source-verified">Verified</span>}</li>)}</ol><p className="source-note">Sources are provided for readers to inspect. “Verified” means the editorial team checked the linked material directly; it is not an endorsement of every claim on the source website.</p></section>}
+      </div>
       </div>
       {relatedStories.length > 0 && (
         <section className="related-articles" aria-labelledby="related-articles-title">
