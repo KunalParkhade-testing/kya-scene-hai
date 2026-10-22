@@ -36,7 +36,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN">
+    <html lang="en-IN" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(localStorage.getItem('ksh-theme')==='dark'){document.documentElement.dataset.theme='dark'}`,
+          }}
+        />
+      </head>
       <body>
         <script
           type="application/ld+json"
