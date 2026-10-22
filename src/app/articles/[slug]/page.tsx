@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import CodeBlockDisplay from '@/components/CodeBlockDisplay';
+import ReadingProgressBar from '@/components/ReadingProgressBar';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
@@ -20,7 +21,20 @@ const highlightClass: Record<string, string> = {
   '#8b1e1e': 'highlight-red', '#ffb5ad': 'highlight-red', red: 'highlight-red',
 }
 type TipNode = { type?: string; text?: string; attrs?: Record<string, unknown>; marks?: { type: string; attrs?: Record<string, unknown> }[]; content?: TipNode[] }
-function tipNode(node: TipNode, key: string): React.ReactNode {
+const textSizeValues = new Set(['small', 'normal', 'large', 'x-large'])
+type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6
+function headingLevel(value: unknown): HeadingLevel {
+  switch (Number(value)) {
+    case 1: return 1
+    case 2: return 2
+    case 3: return 3
+    case 4: return 4
+    case 5: return 5
+    case 6: return 6
+    default: return 2
+  }
+}
+function tipNode(node: TipNode, key: string, nextHeadingId?: () => string | undefined): React.ReactNode {
   if (node.type === 'text') {
     let child: React.ReactNode = node.text ?? ''
     for (const [index, mark] of (node.marks ?? []).entries()) {
@@ -33,6 +47,10 @@ function tipNode(node: TipNode, key: string): React.ReactNode {
         const raw = String(mark.attrs?.color ?? 'yellow').toLowerCase()
         child = <mark key={key + '-m' + index} className={highlightClass[raw] ?? 'highlight-yellow'}>{child}</mark>
       }
+      else if (mark.type === 'textSize') {
+        const size = String(mark.attrs?.size ?? '')
+        if (textSizeValues.has(size)) child = <span key={key + '-m' + index} data-text-size={size}>{child}</span>
+      }
       else if (mark.type === 'link') {
         const href = String(mark.attrs?.href ?? '')
         if (/^https?:\/\//i.test(href)) child = <a key={key + '-m' + index} href={href} target="_blank" rel="noreferrer">{child}</a>
@@ -42,7 +60,14 @@ function tipNode(node: TipNode, key: string): React.ReactNode {
   }
   if (node.type === 'hardBreak') return <br key={key} />
   if (node.type === 'codeBlock') return <CodeBlockDisplay key={key} code={(node.content ?? []).map(child => child.text ?? '').join('')} language={String(node.attrs?.language ?? 'text')} />
-  const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i))
+  if (node.type === 'heading') {
+    const level = headingLevel(node.attrs?.level)
+    const id = nextHeadingId?.()
+    const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i, nextHeadingId))
+    const tag = `h${level}`
+    return React.createElement(tag, { key, id }, children)
+  }
+  const children = (node.content ?? []).map((child, i) => tipNode(child, key + '-' + i, nextHeadingId))
   if (node.type === 'paragraph') return <p key={key}>{children}</p>
   if (node.type === 'bulletList') return <ul key={key}>{children}</ul>
   if (node.type === 'orderedList') return <ol key={key}>{children}</ol>
@@ -51,31 +76,31 @@ function tipNode(node: TipNode, key: string): React.ReactNode {
   if (node.type === 'doc') return <React.Fragment key={key}>{children}</React.Fragment>
   return <React.Fragment key={key}>{children}</React.Fragment>
 }
-function tiptapContent(value: string): React.ReactNode | null {
+function tiptapContent(value: string, nextHeadingId?: () => string | undefined): React.ReactNode | null {
   if (!value.startsWith(TIPTAP_PREFIX)) return null
   try {
     const parsed = JSON.parse(value.slice(TIPTAP_PREFIX.length)) as TipNode
-    return tipNode(parsed, 'tiptap')
+    return tipNode(parsed, 'tiptap', nextHeadingId)
   } catch {
     return null
   }
 }
-function inlineTiptap(value: string): React.ReactNode[] | null {
+function inlineTiptap(value: string, nextHeadingId?: () => string | undefined): React.ReactNode[] | null {
   if (!value.startsWith(TIPTAP_PREFIX)) return null
   try {
     const parsed = JSON.parse(value.slice(TIPTAP_PREFIX.length)) as TipNode
     const content = parsed.type === 'doc' ? parsed.content ?? [] : [parsed]
     return content.flatMap((node, i) => {
-      if (node.type === 'paragraph') return (node.content ?? []).map((child, j) => tipNode(child, 'inline-' + i + '-' + j))
-      return [tipNode(node, 'inline-' + i)]
+      if (node.type === 'paragraph') return (node.content ?? []).map((child, j) => tipNode(child, 'inline-' + i + '-' + j, nextHeadingId))
+      return [tipNode(node, 'inline-' + i, nextHeadingId)]
     })
   } catch {
     return null
   }
 }
 
-function inlineText(value: string): React.ReactNode[] {
-  const tiptap = inlineTiptap(value)
+function inlineText(value: string, nextHeadingId?: () => string | undefined): React.ReactNode[] {
+  const tiptap = inlineTiptap(value, nextHeadingId)
   if (tiptap) return tiptap
   const tokenPattern =
     /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g
@@ -130,8 +155,31 @@ function inlineText(value: string): React.ReactNode[] {
 function headingId(value:string) {
   return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/[\s-]+/g,'-');
 }
-function formattedParagraphs(value:string) {
-  const tiptap = tiptapContent(value)
+function textContent(node: TipNode): string {
+  if (node.type === 'text') return node.text ?? ''
+  if (node.type === 'hardBreak') return ' '
+  return (node.content ?? []).map(textContent).join('')
+}
+function tiptapHeadings(value: string): { text: string; level: HeadingLevel }[] {
+  if (!value.startsWith(TIPTAP_PREFIX)) return []
+  try {
+    const parsed = JSON.parse(value.slice(TIPTAP_PREFIX.length)) as TipNode
+    const headings: { text: string; level: HeadingLevel }[] = []
+    const visit = (node: TipNode) => {
+      if (node.type === 'heading') {
+        const text = textContent(node).trim()
+        if (text) headings.push({ text, level: headingLevel(node.attrs?.level) })
+      }
+      node.content?.forEach(visit)
+    }
+    visit(parsed)
+    return headings
+  } catch {
+    return []
+  }
+}
+function formattedParagraphs(value:string, nextHeadingId?: () => string | undefined) {
+  const tiptap = tiptapContent(value, nextHeadingId)
   if (tiptap) return tiptap
   const lines=value.split('\n');
   const output:React.ReactNode[]=[];
@@ -269,15 +317,19 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
   const hasUpdatedDate=Boolean(updatedDate&&story.updated_at&&story.published_at&&new Date(story.updated_at).getTime()>new Date(story.published_at).getTime());
   const sources=allBlocks.filter((block): block is Extract<ArticleBlock,{type:'source'}> => typeof block==='object'&&block.type==='source'&&!!block.verified&&!!block.title?.trim()&&!!block.url?.trim());
   const contentBlocks=allBlocks.filter((block): block is Exclude<ArticleBlock,Extract<ArticleBlock,{type:'source'}>> => typeof block==='string'||block.type!=='source');
-  const headings=contentBlocks.filter((block): block is {type:'heading';text:string} => typeof block==='object'&&block.type==='heading'&&!!block.text?.trim());
+  const headings = contentBlocks.flatMap(block => {
+    if (typeof block === 'object' && block.type === 'heading') {
+      return block.text?.trim() ? [{ text: block.text.trim(), level: 2 as const }] : []
+    }
+    return typeof block === 'string' ? tiptapHeadings(block) : tiptapHeadings(block.text ?? '')
+  })
   const headingCounts=new Map<string,number>();
   const toc=headings.map(h=>{
     const base=headingId(h.text)||'section';
     const count=headingCounts.get(base)||0;
     headingCounts.set(base,count+1);
-    return {text:h.text,id:count?base+'-'+(count+1):base};
+    return {text:h.text,id:count?base+'-'+(count+1):base,level:h.level};
   });
-  let headingIndex=0;
   const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -291,11 +343,28 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
     publisher: { '@type': 'Organization', name: SITE_NAME },
     articleSection: story.categories?.name || undefined,
   };
+  let headingIndex = 0
+  const nextHeadingId = () => toc[headingIndex++]?.id
+  const renderedContent = contentBlocks.map((block:ArticleBlock,i:number)=>{
+    if(typeof block==='string') return <div className="formatted-content" key={i}>{formattedParagraphs(block,nextHeadingId)}</div>;
+    if(block.type==='paragraph') return block.text ? <div className="formatted-content" key={i}>{formattedParagraphs(block.text,nextHeadingId)}</div> : null;
+    if(block.type==='heading') {
+      const item=block.text?.trim()?toc[headingIndex++]:undefined;
+      return block.text ? <h2 id={item?.id} key={i}>{inlineText(block.text)}</h2> : null;
+    }
+    if(block.type==='quote') return block.text ? <blockquote key={i}><div className="quote-text">{inlineText(block.text,nextHeadingId)}</div>{block.attribution?.trim()&&<footer className="quote-attribution">— {block.attribution.trim()}</footer>}</blockquote> : null;
+    if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text,nextHeadingId)}</div> : null;
+    if(block.type==='image'&&block.url) return <figure key={i}><Image className="articleimage" src={block.url} alt={block.alt||''} width={1200} height={800} unoptimized/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
+    if(block.type==='source') return null;
+    return null;
+  })
 
   return <div className="site">
     <SiteHeader/>
     <main className="article">
+      <ReadingProgressBar />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema).replace(/</g, '\\u003c') }} />
+      <div id="article-reading-content">
       <Link href="/articles" className="back">← Back to archive</Link>
       <div className="kicker article-kicker">{story.categories?.name}</div>
       <h1>{story.title}</h1>
@@ -324,25 +393,14 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
         </aside>
       )}
       {story.hero_image
-        ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized/>
+        ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized loading="eager"/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
-      {toc.length>0&&<nav className="article-toc" aria-label="In this article"><h2>IN THIS ARTICLE</h2><ol>{toc.map(item=><li key={item.id}><a href={'#'+item.id}>{item.text}</a></li>)}</ol></nav>}
+      {toc.length>0&&<nav className="article-toc" aria-label="In this article"><h2>IN THIS ARTICLE</h2><ol>{toc.map(item=><li className={`article-toc-level-${item.level}`} key={item.id}><a href={'#'+item.id}>{item.text}</a></li>)}</ol></nav>}
       <article className="prose">
-        {contentBlocks.map((block:ArticleBlock,i:number)=>{
-          if(typeof block==='string') return <div className="formatted-content" key={i}>{formattedParagraphs(block)}</div>;
-          if(block.type==='paragraph') return block.text ? <div className="formatted-content" key={i}>{formattedParagraphs(block.text)}</div> : null;
-          if(block.type==='heading') {
-            const item=block.text?.trim()?toc[headingIndex++]:undefined;
-            return block.text ? <h2 id={item?.id} key={i}>{inlineText(block.text)}</h2> : null;
-          }
-          if(block.type==='quote') return block.text ? <blockquote key={i}><span className="quote-text">{inlineText(block.text)}</span>{block.attribution?.trim()&&<footer className="quote-attribution">— {block.attribution.trim()}</footer>}</blockquote> : null;
-          if(block.type==='callout') return block.text ? <div className="articlecallout" key={i}>{inlineText(block.text)}</div> : null;
-          if(block.type==='image'&&block.url) return <figure key={i}><Image className="articleimage" src={block.url} alt={block.alt||''} width={1200} height={800} unoptimized/>{block.alt&&<figcaption>{block.alt}</figcaption>}</figure>;
-          if(block.type==='source') return null;
-          return null;
-        })}
+        {renderedContent}
       </article>
       {sources.length>0&&<section className="article-sources"><h2>SOURCES &amp; FURTHER READING</h2><ol>{sources.map((source,i)=><li key={i}><a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>{source.publisher&&<span className="source-publisher"> — {source.publisher}</span>}{source.verified&&<span className="source-verified">Verified</span>}</li>)}</ol><p className="source-note">Sources are provided for readers to inspect. “Verified” means the editorial team checked the linked material directly; it is not an endorsement of every claim on the source website.</p></section>}
+      </div>
       {relatedStories.length > 0 && (
         <section className="related-articles" aria-labelledby="related-articles-title">
           <div className="sectiontop">
