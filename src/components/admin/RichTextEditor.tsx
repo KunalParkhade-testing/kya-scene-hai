@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
-import { Node, mergeAttributes } from '@tiptap/core'
+import { useEffect, useMemo, useRef } from 'react'
+import { Mark, Node, mergeAttributes } from '@tiptap/core'
 import { EditorContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
 import CodeMirrorCodeBlock from './CodeMirrorCodeBlock'
 import StarterKit from '@tiptap/starter-kit'
@@ -18,6 +18,18 @@ const colors = [
   { name: 'Red', value: '#8b1e1e' },
 ]
 const colorNames: Record<string, string> = Object.fromEntries(colors.map(c => [c.value, c.name.toLowerCase()]))
+const textSizes = [
+  { value: 'small', label: 'Small' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'large', label: 'Large' },
+  { value: 'x-large', label: 'Extra large' },
+] as const
+type TextSize = typeof textSizes[number]['value']
+const validTextSizes = new Set<string>(textSizes.map(size => size.value))
+function isTextSize(value: string): value is TextSize {
+  return validTextSizes.has(value)
+}
+const headingLevels = [2, 3, 4] as const
 const languages = [
   { value: 'text', label: 'Plain text' },
   { value: 'javascript', label: 'JavaScript' },
@@ -63,6 +75,32 @@ const CodeBlock = Node.create({
     return ReactNodeViewRenderer(CodeMirrorCodeBlock, { stopEvent: ({ event }) => event.target instanceof HTMLElement && !!event.target.closest('.cm-editor') })
   },
 })
+const TextSize = Mark.create({
+  name: 'textSize',
+  addAttributes() {
+    return {
+      size: {
+        default: null,
+        parseHTML: element => {
+          const size = element.getAttribute('data-text-size')
+          return size && validTextSizes.has(size) ? size : null
+        },
+        renderHTML: attributes => {
+          const size = typeof attributes.size === 'string' && validTextSizes.has(attributes.size)
+            ? attributes.size
+            : null
+          return size ? { 'data-text-size': size } : {}
+        },
+      },
+    }
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-text-size]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0]
+  },
+})
 
 function escapeHtml(value: string) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -95,9 +133,11 @@ function readValue(value: string) {
   return legacyHtml(value)
 }
 export default function RichTextEditor({ value, onChange, placeholder = 'Write your text…' }: Props) {
+  const savedSelection = useRef<{ from: number; to: number } | null>(null)
   const extensions = useMemo(() => [
     StarterKit.configure({ link: { openOnClick: false, autolink: false }, codeBlock: false }),
     CodeBlock,
+    TextSize,
     Highlight.configure({
       multicolor: true,
       HTMLAttributes: { class: 'editor-highlight' },
@@ -178,6 +218,16 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
     if (active) editor.chain().focus().unsetHighlight().run()
     else editor.chain().focus().setHighlight({ color }).run()
   })
+  const setTextSize = (size: TextSize) => {
+    if (!editor) return
+    const chain = editor.chain().focus()
+    if (savedSelection.current) chain.setTextSelection(savedSelection.current)
+    chain.setMark('textSize', { size }).run()
+    savedSelection.current = null
+  }
+  const rememberSelection = () => {
+    if (editor) savedSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to }
+  }
 
   return <div className="rich-editor">
     <div className="rich-toolbar" role="toolbar" aria-label="Text formatting">
@@ -186,6 +236,40 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
         <button type="button" title="Italic" aria-label="Italic" aria-pressed={!!editor?.isActive('italic')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleItalic().run())}><em>I</em></button>
         <button type="button" title="Underline" aria-label="Underline" aria-pressed={!!editor?.isActive('underline')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleUnderline().run())}><u>U</u></button>
         <button type="button" title="Strikethrough" aria-label="Strikethrough" aria-pressed={!!editor?.isActive('strike')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleStrike().run())}><s>S</s></button>
+      </div>
+      <span className="rich-toolbar-divider" />
+      <div className="rich-toolgroup" role="group" aria-label="Text size">
+        <label className="rich-size-control">Text size
+          <select
+            aria-label="Text size"
+            defaultValue=""
+            onMouseDown={rememberSelection}
+            onFocus={rememberSelection}
+            onChange={e => {
+              if (isTextSize(e.target.value)) setTextSize(e.target.value)
+              e.target.value = ''
+            }}
+          >
+            <option value="" disabled>Choose…</option>
+            {textSizes.map(size => <option key={size.value} value={size.value}>{size.label}</option>)}
+          </select>
+        </label>
+      </div>
+      <span className="rich-toolbar-divider" />
+      <div className="rich-toolgroup" role="group" aria-label="Heading level">
+        {headingLevels.map(level => (
+          <button
+            key={level}
+            type="button"
+            title={`Heading ${level}`}
+            aria-label={`Heading ${level}`}
+            aria-pressed={!!editor?.isActive('heading', { level })}
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => command(() => editor?.chain().focus().toggleHeading({ level }).run())}
+          >
+            H{level}
+          </button>
+        ))}
       </div>
       <span className="rich-toolbar-divider" />
       <div className="rich-toolgroup highlight-swatches" role="group" aria-label="Highlight colour">
