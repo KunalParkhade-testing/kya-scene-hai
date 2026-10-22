@@ -281,10 +281,15 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
         <button type="button" title="Bulleted list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleBulletList().run())}>• List</button>
         <button type="button" title="Numbered list" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleOrderedList().run())}>1. List</button>
         <button type="button" title="Insert link" onMouseDown={e => e.preventDefault()} onClick={setLink}>Link</button>
-        <button type="button" title="Inline code" onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Code</button>
-        <button type="button" title="Insert dedicated code block" aria-label="Insert code block" onMouseDown={e => e.preventDefault()} onClick={insertCodeBlock}>＋ Code block</button>
-        <label className="code-language-control">Language <select aria-label="Code block language" value={String(editor?.getAttributes('codeBlock').language || 'javascript')} onChange={e => changeCodeLanguage(e.target.value)}>{languages.map(language => <option key={language.value} value={language.value}>{language.label}</option>)}</select></label>
       </div>
+      <details className="rich-toolbar-more">
+        <summary>More tools</summary>
+        <div className="rich-toolbar-more-content" role="group" aria-label="Code formatting">
+          <button type="button" title="Inline code" aria-pressed={!!editor?.isActive('code')} onMouseDown={e => e.preventDefault()} onClick={() => command(() => editor?.chain().focus().toggleCode().run())}>Inline code</button>
+          <button type="button" title="Insert dedicated code block" aria-label="Insert code block" onMouseDown={e => e.preventDefault()} onClick={insertCodeBlock}>＋ Code block</button>
+          <label className="code-language-control">Language <select aria-label="Code block language" value={String(editor?.getAttributes('codeBlock').language || 'javascript')} onChange={e => changeCodeLanguage(e.target.value)}>{languages.map(language => <option key={language.value} value={language.value}>{language.label}</option>)}</select></label>
+        </div>
+      </details>
     </div>
     <EditorContent editor={editor} />
   </div>
