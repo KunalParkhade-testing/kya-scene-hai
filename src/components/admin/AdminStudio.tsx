@@ -473,6 +473,7 @@ export default function AdminStudio() {
         <div className="studio-top-actions">
           <span className="studio-save-status" role="status">{busy ? 'Saving…' : message}</span>
           <a href="/" className="secondary">View site</a>
+          <a href="/admin/guide" className="secondary">Writing guide</a>
           {editorOpen && (
             <>
               <button className="secondary" type="button" disabled={busy || uploading} onClick={() => setPreviewOpen(true)}>Preview</button>
@@ -509,7 +510,7 @@ export default function AdminStudio() {
 
         <div className="studio-workspace">
           <div className="studio-heading">
-            <div className="studio-block-actions">
+            <div className="studio-heading-title">
               <div className="kicker">{editing ? `${form.status.toUpperCase()} STORY` : 'NEW STORY / DRAFT'}</div>
               <h1>{form.title || 'Untitled story'}</h1>
             </div>
@@ -622,6 +623,16 @@ export default function AdminStudio() {
 
         {editorOpen && (
           <aside className="studio-inspector" aria-label="Story inspector">
+            <section className="studio-optimization-note" aria-label="Content optimization suggestions">
+              <strong>Optimization note</strong>
+              <p>OpenXYZ suggestions for social previews and search results:</p>
+              <ul>
+                <li>Hero image: 1200 × 630 px and under 1 MB.</li>
+                <li>Article title: aim for 60 characters or fewer.</li>
+                <li>Description: aim for 125 characters or fewer.</li>
+                <li>Page title (SEO title): aim for 60 characters or fewer; Google often truncates longer titles, though display varies.</li>
+              </ul>
+            </section>
             <div className="studio-tabs" aria-label="Story settings">
               {([
                 ['settings', 'Settings'],

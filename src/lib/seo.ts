@@ -16,3 +16,14 @@ export function plainText(value: string | null | undefined) {
     .replace(/\s+/g, ' ')
     .trim()
 }
+
+export function isSafeArticleLink(value: string) {
+  try {
+    const url = new URL(value, SITE_URL)
+    if (/^https?:\/\//i.test(value)) return url.protocol === 'http:' || url.protocol === 'https:'
+    if (!value.startsWith('/') || value.startsWith('//')) return false
+    return url.origin === new URL(SITE_URL).origin
+  } catch {
+    return false
+  }
+}

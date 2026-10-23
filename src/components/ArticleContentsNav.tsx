@@ -133,9 +133,10 @@ export default function ArticleContentsNav({ sections, headerOffset }: Props) {
         </button>
         <nav
           id="article-mobile-toc-list"
-          className="article-mobile-toc-list"
+          className={`article-mobile-toc-list${isOpen ? ' is-open' : ''}`}
           aria-label="Article sections"
-          hidden={!isOpen}
+          aria-hidden={!isOpen}
+          inert={!isOpen}
         >
           <ol>
             {sections.map((section, index) => (

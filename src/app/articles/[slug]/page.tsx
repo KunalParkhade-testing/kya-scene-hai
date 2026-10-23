@@ -7,6 +7,7 @@ import SiteFooter from '@/components/SiteFooter';
 import CodeBlockDisplay from '@/components/CodeBlockDisplay';
 import ArticleContentsNav from '@/components/ArticleContentsNav';
 import ReadingProgressBar from '@/components/ReadingProgressBar';
+import ArticleShare from '@/components/ArticleShare';
 import {createClient} from '@/lib/supabase/server';
 import type {Article,ArticleBlock} from '@/lib/types';
 
@@ -54,7 +55,10 @@ function tipNode(node: TipNode, key: string, nextHeadingId?: () => string | unde
       }
       else if (mark.type === 'link') {
         const href = String(mark.attrs?.href ?? '')
-        if (/^https?:\/\//i.test(href)) child = <a key={key + '-m' + index} href={href} target="_blank" rel="noreferrer">{child}</a>
+        if (isSafeArticleLink(href)) {
+          const external = /^https?:\/\//i.test(href)
+          child = <a key={key + '-m' + index} href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>{child}</a>
+        }
       }
     }
     return <React.Fragment key={key}>{child}</React.Fragment>
@@ -104,7 +108,7 @@ function inlineText(value: string, nextHeadingId?: () => string | undefined): Re
   const tiptap = inlineTiptap(value, nextHeadingId)
   if (tiptap) return tiptap
   const tokenPattern =
-    /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g
+    /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\((?:https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\))/g
 
   return value.split(tokenPattern).filter(Boolean).map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -140,10 +144,11 @@ function inlineText(value: string, nextHeadingId?: () => string | undefined): Re
       return <u key={index}>{inlineText(underline[1])}</u>
     }
 
-    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/)
-    if (link) {
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)$/)
+    if (link && isSafeArticleLink(link[2])) {
+      const external = /^https?:\/\//i.test(link[2])
       return (
-        <a key={index} href={link[2]} target="_blank" rel="noreferrer">
+        <a key={index} href={link[2]} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>
           {inlineText(link[1])}
         </a>
       )
@@ -216,9 +221,12 @@ function formattedParagraphs(value:string, nextHeadingId?: () => string | undefi
 }
 
 import type { Metadata } from 'next'
-import { absoluteUrl, plainText, SITE_NAME } from '@/lib/seo'
+import { absoluteUrl, isSafeArticleLink, plainText, SITE_NAME } from '@/lib/seo'
 
 const EDITORIAL_AUTHOR = 'Kya Scene Hai? Editorial Desk'
+type RelatedArticle = Pick<Article, 'slug' | 'title' | 'dek' | 'hero_text' | 'reading_minutes'> & {
+  categories: { name: string; slug: string }[] | null
+}
 
 function displayDate(value: string | null | undefined) {
   if (!value) return null
@@ -277,15 +285,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function Article({params}:{params:Promise<{slug:string}>}) {
   const {slug}=await params;
   const supabase=await createClient();
-  const {data}=await supabase.from('articles').select('*, categories(name,slug)').eq('slug',slug).eq('status','published').maybeSingle();
+  const {data}=await supabase.from('articles').select('id,slug,title,dek,editorial_note,body,hero_text,hero_image,category_id,published_at,updated_at,reading_minutes,seo_description,categories(name,slug)').eq('slug',slug).eq('status','published').maybeSingle();
   const story=data as Article|null;
   if(!story) notFound();
 
-  let relatedStories: Article[] = []
+  let relatedStories: RelatedArticle[] = []
   if (story.category_id) {
     const { data: sameTopic, error: relatedError } = await supabase
       .from('articles')
-      .select('*, categories(name,slug)')
+      .select('slug,title,dek,hero_text,reading_minutes,categories(name,slug)')
       .eq('status', 'published')
       .eq('category_id', story.category_id)
       .neq('id', story.id)
@@ -294,14 +302,14 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       .limit(4)
 
     if (relatedError) throw relatedError
-    relatedStories = (sameTopic ?? []) as Article[]
+    relatedStories = (sameTopic ?? []) as RelatedArticle[]
   }
 
   const showingRelated = relatedStories.length > 0
   if (!showingRelated) {
     const { data: latestStories, error: latestError } = await supabase
       .from('articles')
-      .select('*, categories(name,slug)')
+      .select('slug,title,dek,hero_text,reading_minutes,categories(name,slug)')
       .eq('status', 'published')
       .neq('id', story.id)
       .order('published_at', { ascending: false, nullsFirst: false })
@@ -309,7 +317,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       .limit(4)
 
     if (latestError) throw latestError
-    relatedStories = (latestStories ?? []) as Article[]
+    relatedStories = (latestStories ?? []) as RelatedArticle[]
   }
 
   const allBlocks=story.body??[];
@@ -395,6 +403,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
           <p>{story.editorial_note}</p>
         </aside>
       )}
+      <ArticleShare title={plainText(story.title)} url={absoluteUrl(`/articles/${story.slug}`)} />
       {story.hero_image
         ? <Image className="articleimage" src={story.hero_image} alt={story.title} width={1200} height={800} unoptimized loading="eager"/>
         : story.hero_text ? <div className="articlehero yellow"><h2>{story.hero_text}</h2></div> : null}
@@ -416,7 +425,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
             {relatedStories.map((related, index) => (
               <Link className="card" href={`/articles/${related.slug}`} key={related.slug}>
                 <div className={`cover ${['blue', 'yellow', 'red'][index % 3]}`}>
-                  <span className="tag">{related.categories?.name}</span>
+                  <span className="tag">{related.categories?.[0]?.name}</span>
                   <strong>{related.hero_text}</strong>
                 </div>
                 <div className="cardbody">
