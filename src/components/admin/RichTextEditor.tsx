@@ -6,6 +6,7 @@ import { EditorContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react'
 import CodeMirrorCodeBlock from './CodeMirrorCodeBlock'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
+import { isSafeArticleLink } from '@/lib/seo'
 
 type Props = { value: string; onChange: (value: string) => void; placeholder?: string }
 const PREFIX = '__TIPTAP_JSON__:'
@@ -114,7 +115,11 @@ function legacyInline(value: string) {
   s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
   s = s.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>')
   s = s.replace(/\x60([^\x60\n]+)\x60/g, '<code>$1</code>')
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)/g, (match, text: string, href: string) => {
+    if (!isSafeArticleLink(href)) return match
+    const externalAttributes = /^https?:\/\//i.test(href) ? ' target="_blank" rel="noreferrer"' : ''
+    return `<a href="${href}"${externalAttributes}>${text}</a>`
+  })
   return s
 }
 function legacyHtml(value: string) {
@@ -200,8 +205,18 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write y
 
   const command = (action: () => void) => { if (editor) { action(); editor.commands.focus() } }
   const setLink = () => {
-    const url = window.prompt('Paste the full https:// link')
-    if (url && /^https?:\/\//i.test(url)) editor?.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank', rel: 'noreferrer' }).run()
+    const url = window.prompt('Paste an internal path (for example /articles/story) or full https:// link')
+    if (!url) return
+    if (!isSafeArticleLink(url)) {
+      window.alert('Use a site path starting with / or a full http:// or https:// link.')
+      return
+    }
+    const external = /^https?:\/\//i.test(url)
+    editor?.chain().focus().extendMarkRange('link').setLink({
+      href: url,
+      target: external ? '_blank' : null,
+      rel: external ? 'noreferrer' : null,
+    }).run()
   }
   const insertCodeBlock = () => {
     if (!editor) return

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import CodeBlockDisplay from '@/components/CodeBlockDisplay'
 import type { ArticleBlock } from '@/lib/types'
 import ArticleContentsNav, { type ArticleSection } from '@/components/ArticleContentsNav'
+import { isSafeArticleLink } from '@/lib/seo'
 
 type PreviewSource = {
   title: string
@@ -110,8 +111,9 @@ function renderTipNode(node: TipNode, key: string, nextHeadingId?: () => string 
         }
       } else if (mark.type === 'link') {
         const href = String(mark.attrs?.href ?? '')
-        if (/^https?:\/\//i.test(href)) {
-          child = <a key={`${key}-m${index}`} href={href} target="_blank" rel="noreferrer">{child}</a>
+        if (isSafeArticleLink(href)) {
+          const external = /^https?:\/\//i.test(href)
+          child = <a key={`${key}-m${index}`} href={href} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>{child}</a>
         }
       }
     }
@@ -165,7 +167,7 @@ function parseInlineTiptap(value: string, nextHeadingId?: () => string | undefin
 }
 
 function inlineText(value: string): ReactNode[] {
-  const pattern = /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g
+  const pattern = /(\*\*.+?\*\*|~~.+?~~|==(?:yellow|green|blue|pink|orange|red)\|.+?==|==.+?==|\*[^*\n]+\*|\x60[^\x60\n]+\x60|<u>.+?<\/u>|\[[^\]]+\]\((?:https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\))/g
   return value.split(pattern).filter(Boolean).map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={index}>{inlineText(part.slice(2, -2))}</strong>
     if (part.startsWith('~~') && part.endsWith('~~')) return <del key={index}>{inlineText(part.slice(2, -2))}</del>
@@ -177,8 +179,11 @@ function inlineText(value: string): ReactNode[] {
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index}>{part.slice(1, -1)}</code>
     const underline = part.match(/^<u>(.*?)<\/u>$/)
     if (underline) return <u key={index}>{inlineText(underline[1])}</u>
-    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/)
-    if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{inlineText(link[1])}</a>
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/(?!\/)[^\s)]*)\)$/)
+    if (link && isSafeArticleLink(link[2])) {
+      const external = /^https?:\/\//i.test(link[2])
+      return <a key={index} href={link[2]} {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}>{inlineText(link[1])}</a>
+    }
     return part
   })
 }
