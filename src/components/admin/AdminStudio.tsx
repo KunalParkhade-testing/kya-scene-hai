@@ -20,6 +20,7 @@ type EditorForm = {
   editorial_note: string
   hero_text: string
   hero_image: string
+  is_featured: boolean
   category_id: string
   reading_minutes: string
   status: 'draft' | 'published' | 'archived'
@@ -61,6 +62,7 @@ function createEmptyForm(): EditorForm {
   editorial_note: '',
   hero_text: '',
   hero_image: '',
+  is_featured: false,
   category_id: '',
   reading_minutes: '8',
   status: 'draft',
@@ -332,6 +334,7 @@ export default function AdminStudio() {
       editorial_note: form.editorial_note.trim() || null,
       hero_text: form.hero_text,
       hero_image: form.hero_image || null,
+      is_featured: form.is_featured,
       category_id: form.category_id ? Number(form.category_id) : null,
       reading_minutes: Number(form.reading_minutes) || null,
       status,
@@ -391,6 +394,7 @@ export default function AdminStudio() {
       editorial_note: article.editorial_note || '',
       hero_text: article.hero_text || '',
       hero_image: article.hero_image || '',
+      is_featured: article.is_featured,
       category_id: article.category_id ? String(article.category_id) : '',
       reading_minutes: String(article.reading_minutes || 8),
       status: article.status,
@@ -662,6 +666,13 @@ export default function AdminStudio() {
                 <label>Reading minutes
                   <input type="number" min="1" value={form.reading_minutes} onChange={event => setForm({ ...form, reading_minutes: event.target.value })} />
                 </label>
+                <div className="studio-featured-toggle">
+                  <label>
+                    <input type="checkbox" checked={form.is_featured} onChange={event => setForm({ ...form, is_featured: event.target.checked })} />
+                    Feature on homepage
+                  </label>
+                  <p>Only one published story can be featured. Selecting this for another published story replaces the current feature.</p>
+                </div>
                 <label>Hero text
                   <input value={form.hero_text} onChange={event => setForm({ ...form, hero_text: event.target.value })} />
                 </label>

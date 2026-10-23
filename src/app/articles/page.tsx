@@ -3,10 +3,16 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
+import StoryCard from '@/components/StoryCard'
 import { createClient } from '@/lib/supabase/server'
 import type { Article } from '@/lib/types'
 
+type ArchiveStory = Pick<Article, 'slug' | 'title' | 'dek' | 'hero_text' | 'hero_image' | 'reading_minutes' | 'published_at'> & {
+  categories?: { name: string; slug: string }[] | null
+}
+
 const PAGE_SIZE = 20
+const cardColors = ['blue', 'yellow', 'red'] as const
 const description = 'Explore stories, systems, culture and ideas shaping the world, starting with India.'
 
 export async function generateMetadata({
@@ -68,7 +74,7 @@ export default async function Articles({
   }
   const { data, error } = await supabase
     .from('articles')
-    .select('*, categories(name,slug)')
+    .select('slug,title,dek,hero_text,hero_image,reading_minutes,published_at,categories(name,slug)')
     .eq('status', 'published')
     .order('published_at', { ascending: sort === 'oldest', nullsFirst: false })
     .order('slug')
@@ -76,7 +82,7 @@ export default async function Articles({
 
   if (error) throw error
 
-  const stories = (data ?? []) as Article[]
+  const stories = (data ?? []) as ArchiveStory[]
 
   return (
     <div className="site">
@@ -94,17 +100,7 @@ export default async function Articles({
         </form>
         <div className="grid">
           {stories.map((story, index) => (
-            <Link className="card" href={`/articles/${story.slug}`} key={story.slug}>
-              <div className={`cover ${['blue', 'yellow', 'red'][index % 3]}`}>
-                <span className="tag">{story.categories?.name}</span>
-                <strong>{story.hero_text}</strong>
-              </div>
-              <div className="cardbody">
-                <h3>{story.title}</h3>
-                <p>{story.dek}</p>
-                <div className="read">{story.reading_minutes} min read · Open story →</div>
-              </div>
-            </Link>
+            <StoryCard key={story.slug} story={story} color={cardColors[index % cardColors.length]} />
           ))}
         </div>
         {!stories.length && <div className="empty">No published stories yet.</div>}

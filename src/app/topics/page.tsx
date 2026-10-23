@@ -3,10 +3,15 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
+import StoryCard from '@/components/StoryCard'
 import { createClient } from '@/lib/supabase/server'
 import type { Article } from '@/lib/types'
 
 const PAGE_SIZE = 20
+const cardColors = ['blue', 'yellow', 'red'] as const
+type TopicStory = Pick<Article, 'slug' | 'title' | 'dek' | 'hero_text' | 'hero_image' | 'reading_minutes' | 'published_at'> & {
+  categories?: { name: string; slug: string }[] | null
+}
 const topics = [
   ['systems', 'Systems'],
   ['economics', 'Economics'],
@@ -58,8 +63,8 @@ export default async function Topics({
   const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
   const supabase = await createClient()
   const selection = topic
-    ? '*, categories!inner(name,slug)'
-    : '*, categories(name,slug)'
+    ? 'slug,title,dek,hero_text,hero_image,reading_minutes,published_at,categories!inner(name,slug)'
+    : 'slug,title,dek,hero_text,hero_image,reading_minutes,published_at,categories(name,slug)'
   let countQuery = supabase
     .from('articles')
     .select(topic ? 'id, categories!inner(slug)' : 'id', { count: 'exact', head: true })
@@ -93,7 +98,7 @@ export default async function Topics({
 
   if (error) throw error
 
-  const stories = (data ?? []) as Article[]
+  const stories = (data ?? []) as TopicStory[]
   const pageHref = (targetPage: number) => {
     const params = new URLSearchParams()
     if (topic) params.set('topic', topic)
@@ -124,16 +129,7 @@ export default async function Topics({
         </form>
         <div className="grid topic-grid">
           {stories.map((story, index) => (
-            <Link className="card" href={`/articles/${story.slug}`} key={story.slug}>
-              <div className={`cover ${['blue', 'yellow', 'red'][index % 3]}`}>
-                <span className="tag">{story.categories?.name}</span>
-                <strong>{story.hero_text}</strong>
-              </div>
-              <div className="cardbody">
-                <h3>{story.title}</h3>
-                <p>{story.dek}</p>
-              </div>
-            </Link>
+            <StoryCard key={story.slug} story={story} color={cardColors[index % cardColors.length]} />
           ))}
         </div>
         {!stories.length && <div className="empty">Nothing published in this rabbit hole yet.</div>}
