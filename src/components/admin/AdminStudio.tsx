@@ -20,6 +20,7 @@ type EditorForm = {
   editorial_note: string
   hero_text: string
   hero_image: string
+  media_folder: string
   is_featured: boolean
   category_id: string
   reading_minutes: string
@@ -62,6 +63,7 @@ function createEmptyForm(): EditorForm {
   editorial_note: '',
   hero_text: '',
   hero_image: '',
+  media_folder: '',
   is_featured: false,
   category_id: '',
   reading_minutes: '8',
@@ -117,6 +119,7 @@ export default function AdminStudio() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadNames, setUploadNames] = useState<Record<string, string>>({})
   const [panel, setPanel] = useState<Panel>('settings')
   const [storyFilter, setStoryFilter] = useState<StoryFilter>('all')
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -288,7 +291,7 @@ export default function AdminStudio() {
     setDropTarget(null)
   }
 
-  async function upload(file: File, target: 'hero' | number) {
+  async function upload(file: File, target: 'hero' | { blockId: string }, requestedName: string) {
     if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
       setMessage('Use PNG, JPG, WEBP or GIF.')
       return
@@ -297,10 +300,50 @@ export default function AdminStudio() {
       setMessage('Image must be 10 MB or smaller.')
       return
     }
+    const folder = slugify(form.media_folder || form.slug || form.title)
+    if (!folder) {
+      setMessage('Add an article title or folder name before uploading an image.')
+      return
+    }
+    const extensionByType: Record<string, string> = {
+      'image/png': 'png',
+      'image/jpeg': 'jpg',
+      'image/webp': 'webp',
+      'image/gif': 'gif',
+    }
+    const customName = requestedName.trim()
+    const normalizedName = customName ? slugify(customName) : ''
+    if (customName && !normalizedName) {
+      setMessage('Use letters or numbers for the image filename.')
+      return
+    }
+
     setUploading(true)
     setMessage('')
-    const extension = file.name.split('.').pop() || 'jpg'
-    const path = `${crypto.randomUUID()}.${extension}`
+    const { data: existingFiles, error: listError } = await supabase.storage.from('article-media').list(folder, { limit: 1000 })
+    if (listError) {
+      setMessage(listError.message)
+      setUploading(false)
+      return
+    }
+    let baseName = normalizedName
+    if (!baseName) {
+      const usedNumbers = new Set(
+        (existingFiles ?? [])
+          .map(item => item.name.match(/^(\d+)\.[^.]+$/)?.[1])
+          .filter((name): name is string => !!name)
+          .map(Number),
+      )
+      let nextNumber = 1
+      while (usedNumbers.has(nextNumber)) nextNumber += 1
+      baseName = String(nextNumber)
+    }
+    const path = `${folder}/${baseName}.${extensionByType[file.type]}`
+    if ((existingFiles ?? []).some(item => item.name === `${baseName}.${extensionByType[file.type]}`)) {
+      setMessage(`An image named ${baseName}.${extensionByType[file.type]} already exists in this folder.`)
+      setUploading(false)
+      return
+    }
     const { error } = await supabase.storage.from('article-media').upload(path, file, { contentType: file.type, upsert: false })
     if (error) {
       setMessage(error.message)
@@ -308,9 +351,16 @@ export default function AdminStudio() {
       return
     }
     const { data } = supabase.storage.from('article-media').getPublicUrl(path)
-    if (target === 'hero') setForm(current => ({ ...current, hero_image: data.publicUrl }))
-    else updateBlock(target, { url: data.publicUrl })
-    setMessage('Image uploaded.')
+    setForm(current => ({
+      ...current,
+      media_folder: folder,
+      ...(target === 'hero'
+        ? { hero_image: data.publicUrl }
+        : { body: current.body.map(block => block.id === target.blockId ? { ...block, url: data.publicUrl } : block) }),
+    }))
+    const targetKey = target === 'hero' ? 'hero' : target.blockId
+    setUploadNames(current => ({ ...current, [targetKey]: '' }))
+    setMessage(`Image uploaded to ${path}.`)
     setUploading(false)
   }
 
@@ -319,6 +369,12 @@ export default function AdminStudio() {
     if (!form.category_id) {
       setPanel('settings')
       setMessage('Choose a category before saving.')
+      return
+    }
+    const mediaFolder = slugify(form.media_folder || form.slug || form.title)
+    if (!mediaFolder) {
+      setPanel('settings')
+      setMessage('Enter an image folder name using letters or numbers.')
       return
     }
     setBusy(true)
@@ -334,6 +390,7 @@ export default function AdminStudio() {
       editorial_note: form.editorial_note.trim() || null,
       hero_text: form.hero_text,
       hero_image: form.hero_image || null,
+      media_folder: mediaFolder,
       is_featured: form.is_featured,
       category_id: form.category_id ? Number(form.category_id) : null,
       reading_minutes: Number(form.reading_minutes) || null,
@@ -360,10 +417,16 @@ export default function AdminStudio() {
     setBusy(false)
     if (errorMessage) return
 
-    setForm(current => ({ ...current, status, published_at: publishedAt }))
+    setForm(current => ({
+      ...current,
+      status,
+      published_at: publishedAt,
+      media_folder: payload.media_folder || '',
+    }))
     await load()
     if (exitAfterSave) {
       setForm(createEmptyForm())
+      setUploadNames({})
       setEditing(null)
       setEditorOpen(false)
       setStoryFilter('all')
@@ -376,6 +439,7 @@ export default function AdminStudio() {
   function edit(article: Article) {
     setEditorOpen(true)
     setPanel('settings')
+    setUploadNames({})
     const raw: ArticleBlock[] = Array.isArray(article.body) ? article.body : []
     const sources: Source[] = raw
       .filter((block): block is Extract<ArticleBlock, { type: 'source' }> => typeof block === 'object' && block.type === 'source')
@@ -394,6 +458,7 @@ export default function AdminStudio() {
       editorial_note: article.editorial_note || '',
       hero_text: article.hero_text || '',
       hero_image: article.hero_image || '',
+      media_folder: article.media_folder || slugify(article.slug),
       is_featured: article.is_featured,
       category_id: article.category_id ? String(article.category_id) : '',
       reading_minutes: String(article.reading_minutes || 8),
@@ -415,6 +480,7 @@ export default function AdminStudio() {
   function startNewStory() {
     setEditing(null)
     setForm(createEmptyForm())
+    setUploadNames({})
     setPanel('settings')
     setEditorOpen(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -585,10 +651,18 @@ export default function AdminStudio() {
                             <label>Image URL
                               <input value={block.url || ''} onChange={event => updateBlock(index, { url: event.target.value })} placeholder="Paste a public image URL" />
                             </label>
+                            <label>Filename without extension (optional)
+                              <input
+                                maxLength={100}
+                                value={uploadNames[block.id] || ''}
+                                onChange={event => setUploadNames(current => ({ ...current, [block.id]: event.target.value }))}
+                                placeholder="Automatic: 1, 2, 3…"
+                              />
+                            </label>
                             <label className="studio-upload">Upload image
                               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={event => {
                                 const file = event.target.files?.[0]
-                                if (file) void upload(file, index)
+                                if (file) void upload(file, { blockId: block.id }, uploadNames[block.id] || '')
                               }} disabled={uploading} />
                             </label>
                             <label>Alt text
@@ -657,6 +731,15 @@ export default function AdminStudio() {
                     <button type="button" className="secondary" onClick={() => setForm({ ...form, slug: slugify(form.title) })}>Generate</button>
                   </div>
                 </label>
+                <label>Image folder
+                  <input
+                    maxLength={80}
+                    value={form.media_folder}
+                    onChange={event => setForm({ ...form, media_folder: event.target.value })}
+                    placeholder={slugify(form.slug || form.title) || 'article-folder'}
+                  />
+                </label>
+                <p className="studio-help">Uploads go into this folder. Leave it blank to use the article slug; filenames are numbered automatically unless you enter a custom name.</p>
                 <label>Category
                   <select value={form.category_id} onChange={event => setForm({ ...form, category_id: event.target.value })} required>
                     <option value="">Choose…</option>
@@ -679,10 +762,18 @@ export default function AdminStudio() {
                 <label>Hero image URL
                   <input value={form.hero_image} onChange={event => setForm({ ...form, hero_image: event.target.value })} placeholder="Paste a public URL" />
                 </label>
+                <label>Hero image filename without extension (optional)
+                  <input
+                    maxLength={100}
+                    value={uploadNames.hero || ''}
+                    onChange={event => setUploadNames(current => ({ ...current, hero: event.target.value }))}
+                    placeholder="Automatic: 1, 2, 3…"
+                  />
+                </label>
                 <label className="studio-upload">Upload hero image
                   <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={event => {
                     const file = event.target.files?.[0]
-                    if (file) void upload(file, 'hero')
+                    if (file) void upload(file, 'hero', uploadNames.hero || '')
                   }} disabled={uploading} />
                 </label>
                 {form.hero_image && <Image className="adminpreview" src={form.hero_image} alt="Hero preview" width={800} height={600} unoptimized />}

@@ -6,7 +6,7 @@ const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: SITE_NAME,
-  alternateName: 'Kya Scene Hai',
+  alternateName: 'Kya Scene Hai?',
   url: `${SITE_URL}/`,
 }
 
