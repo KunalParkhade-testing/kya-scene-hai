@@ -21,6 +21,7 @@ A curiosity-driven editorial publication exploring stories, systems and ideas �
 - Admin authorization uses `app_metadata.role = "admin"`
 - Create, edit, publish, archive and delete stories
 - Assign categories, reading time, hero copy and hero image URL
+- Upload article images into a named per-article folder with automatic numbered or custom filenames
 - Story body is stored as JSON blocks in Supabase
 
 ## Supabase
@@ -29,6 +30,7 @@ The project is configured for the Supabase project `vrwcnvihkocwnocnaxmr`.
 Migrations:
 - `202609140001_content.sql` — editorial content schema + public RLS
 - `202609140002_admin_publishing.sql` — admin publishing policies
+- `20261024111500_article_media_folders.sql` — per-article media folders and admin-only storage listing
 
 The public site reads only published articles from Supabase. Drafts and archived stories stay out of the public site.
 
@@ -42,7 +44,7 @@ Authorization deliberately uses `app_metadata`, not editable `user_metadata`.
 
 ## Environment
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://vrwcnvihkocwnocnaxmr.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
