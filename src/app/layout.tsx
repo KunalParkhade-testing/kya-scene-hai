@@ -8,6 +8,7 @@ const websiteSchema = {
   name: SITE_NAME,
   alternateName: 'Kya Scene Hai?',
   url: `${SITE_URL}/`,
+  description: DEFAULT_DESCRIPTION,
 }
 
 export const metadata: Metadata = {
