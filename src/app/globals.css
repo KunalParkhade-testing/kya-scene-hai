@@ -1043,6 +1043,11 @@ html[data-theme='dark'] .site .newsletter-message {
   list-style: none;
 }
 
+.article-sidebar-nav ol ol,
+.article-mobile-toc-list ol ol {
+  margin: 2px 0 0 10px;
+}
+
 .article-sidebar-nav li,
 .article-mobile-toc-list li {
   min-width: 0;

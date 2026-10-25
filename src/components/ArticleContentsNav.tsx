@@ -17,6 +17,65 @@ function sectionNumber(index: number) {
   return String(index + 1).padStart(2, '0')
 }
 
+type SectionTreeNode = {
+  section: ArticleSection
+  children: SectionTreeNode[]
+}
+
+function buildSectionTree(sections: ArticleSection[]) {
+  const roots: SectionTreeNode[] = []
+  const parents: SectionTreeNode[] = []
+
+  for (const section of sections) {
+    const node: SectionTreeNode = { section, children: [] }
+    while (parents.length && parents[parents.length - 1].section.level >= section.level) {
+      parents.pop()
+    }
+
+    const parent = parents[parents.length - 1]
+    if (section.level <= 2 || !parent) roots.push(node)
+    else parent.children.push(node)
+    parents.push(node)
+  }
+
+  return roots
+}
+
+function alphabeticNumber(index: number) {
+  let value = index + 1
+  let result = ''
+  while (value > 0) {
+    value -= 1
+    result = String.fromCharCode(97 + value % 26) + result
+    value = Math.floor(value / 26)
+  }
+  return result
+}
+
+function romanNumber(index: number) {
+  const values: [number, string][] = [
+    [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'],
+    [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'],
+    [5, 'v'], [4, 'iv'], [1, 'i'],
+  ]
+  let value = index + 1
+  let result = ''
+  for (const [amount, numeral] of values) {
+    while (value >= amount) {
+      result += numeral
+      value -= amount
+    }
+  }
+  return result
+}
+
+function sectionMarker(index: number, level: number) {
+  if (level <= 2) return sectionNumber(index)
+  if (level === 3) return alphabeticNumber(index)
+  if (level === 4) return romanNumber(index)
+  return String(index + 1)
+}
+
 export default function ArticleContentsNav({ sections, headerOffset }: Props) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
   const [isOpen, setIsOpen] = useState(false)
@@ -93,6 +152,25 @@ export default function ArticleContentsNav({ sections, headerOffset }: Props) {
   }, [isOpen])
 
   const activeSection = sections.find(section => section.id === activeId) ?? sections[0]
+  const sectionTree = buildSectionTree(sections)
+  const renderSections = (nodes: SectionTreeNode[]) => (
+    <ol>
+      {nodes.map((node, index) => (
+        <li key={node.section.id}>
+          <a
+            href={`#${node.section.id}`}
+            className={node.section.id === activeId ? 'is-active' : undefined}
+            aria-current={node.section.id === activeId ? 'location' : undefined}
+            onClick={() => setIsOpen(false)}
+          >
+            <span className="article-section-number">{sectionMarker(index, node.section.level)}</span>
+            <span>{node.section.text}</span>
+          </a>
+          {node.children.length > 0 && renderSections(node.children)}
+        </li>
+      ))}
+    </ol>
+  )
 
   return (
     <aside
@@ -102,20 +180,7 @@ export default function ArticleContentsNav({ sections, headerOffset }: Props) {
     >
       <nav className="article-sidebar-nav" aria-label="In this article">
         <h2>IN THIS ARTICLE</h2>
-        <ol>
-          {sections.map((section, index) => (
-            <li key={section.id}>
-              <a
-                href={`#${section.id}`}
-                className={section.id === activeId ? 'is-active' : undefined}
-                aria-current={section.id === activeId ? 'location' : undefined}
-              >
-                <span className="article-section-number">{sectionNumber(index)}</span>
-                <span>{section.text}</span>
-              </a>
-            </li>
-          ))}
-        </ol>
+        {renderSections(sectionTree)}
       </nav>
 
       <div className="article-mobile-toc">
@@ -138,21 +203,7 @@ export default function ArticleContentsNav({ sections, headerOffset }: Props) {
           aria-hidden={!isOpen}
           inert={!isOpen}
         >
-          <ol>
-            {sections.map((section, index) => (
-              <li key={section.id}>
-                <a
-                  href={`#${section.id}`}
-                  className={section.id === activeId ? 'is-active' : undefined}
-                  aria-current={section.id === activeId ? 'location' : undefined}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <span className="article-section-number">{sectionNumber(index)}</span>
-                  <span>{section.text}</span>
-                </a>
-              </li>
-            ))}
-          </ol>
+          {renderSections(sectionTree)}
         </nav>
       </div>
     </aside>
