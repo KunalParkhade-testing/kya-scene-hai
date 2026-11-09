@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/seo'
 
@@ -37,15 +38,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN" suppressHydrationWarning>
-      <head>
-        <script
+    <html lang="en-IN" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head />
+      <body>
+        <Script
+          id="theme-bootstrap"
+          strategy="beforeInteractive"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `if(localStorage.getItem('ksh-theme')==='dark'){document.documentElement.dataset.theme='dark'}`,
           }}
         />
-      </head>
-      <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}

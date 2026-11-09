@@ -12,15 +12,6 @@ const cardColors = ['blue', 'yellow', 'red'] as const
 type TopicStory = Pick<Article, 'slug' | 'title' | 'dek' | 'hero_text' | 'hero_image' | 'reading_minutes' | 'published_at'> & {
   categories?: { name: string; slug: string }[] | null
 }
-const topics = [
-  ['systems', 'Systems'],
-  ['economics', 'Economics'],
-  ['culture', 'Culture'],
-  ['science', 'Science'],
-  ['infrastructure', 'Infrastructure'],
-  ['what-if', 'What If?'],
-  ['politics', 'Politics'],
-]
 const description = 'Browse Kya Scene Hai? stories about systems, politics, economics, culture, science, infrastructure and big questions.'
 
 export async function generateMetadata({
@@ -62,6 +53,8 @@ export default async function Topics({
   const requestedPageNumber = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
   const sort = sortParam === 'oldest' ? 'oldest' : 'newest'
   const supabase = await createClient()
+  const { data: topics, error: topicsError } = await supabase.from('categories').select('slug,name').order('name')
+  if (topicsError) throw topicsError
   const selection = topic
     ? 'slug,title,dek,hero_text,hero_image,reading_minutes,published_at,categories!inner(name,slug)'
     : 'slug,title,dek,hero_text,hero_image,reading_minutes,published_at,categories(name,slug)'
@@ -114,7 +107,7 @@ export default async function Topics({
         <div className="kicker">Browse by topic</div>
         <h1>GO WHERE<br />CURIOSITY GOES.</h1>
         <div className="topics">
-          {topics.map(([slug, name]) => (
+          {(topics ?? []).map(({ slug, name }) => (
             <Link className="topic" href={`/topics?topic=${slug}${sort === 'oldest' ? '&sort=oldest' : ''}`} key={slug}>{name}</Link>
           ))}
         </div>

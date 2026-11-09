@@ -4,7 +4,7 @@ import Image from 'next/image'
 import SiteHeader from '@/components/SiteHeader'
 import SiteFooter from '@/components/SiteFooter'
 import { createClient } from '@/lib/supabase/server'
-import type { Article } from '@/lib/types'
+import type { Article, Series } from '@/lib/types'
 
 export const metadata: Metadata = {
   alternates: {
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 type HomeProps = { searchParams: Promise<{ newsletter?: string }> }
 type TopicSlug = 'systems' | 'economics' | 'culture' | 'science' | 'infrastructure' | 'what-if'
+type FeaturedSeries = Pick<Series, 'slug' | 'name' | 'description'>
 type HomepageStory = Pick<Article, 'id' | 'slug' | 'title' | 'dek' | 'hero_text' | 'hero_image' | 'is_featured' | 'reading_minutes' | 'published_at'> & {
   categories?: { name: string; slug: string }[] | null
 }
@@ -54,6 +55,17 @@ async function getTopicCounts(): Promise<Record<TopicSlug, number>> {
   return Object.fromEntries(results) as Record<TopicSlug, number>
 }
 
+async function getFeaturedSeries(): Promise<FeaturedSeries | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('series')
+    .select('slug,name,description')
+    .eq('is_featured', true)
+    .maybeSingle()
+  if (error) throw error
+  return data as FeaturedSeries | null
+}
+
 function formatPublishedDate(date: string | null) {
   if (!date) return null
   return new Intl.DateTimeFormat('en-GB', {
@@ -65,7 +77,7 @@ function formatPublishedDate(date: string | null) {
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const [stories, topicCounts, params] = await Promise.all([getStories(), getTopicCounts(), searchParams])
+  const [stories, topicCounts, featuredSeries, params] = await Promise.all([getStories(), getTopicCounts(), getFeaturedSeries(), searchParams])
   const newsletterStatus = params.newsletter
   const selectedStory = stories.find(story => story.is_featured)
   const featuredStory = selectedStory ?? stories[0]
@@ -202,11 +214,12 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <section>
         <div className="feature">
-          <div className="featuremain">
-            <div className="kicker kicker-yellow">The flagship series</div>
-            <h3>WHY INDIA<br />WORKS LIKE THIS</h3>
-            <p>Everyday India looks complicated. This series maps the machinery underneath it.</p>
-          </div>
+          <Link className="featuremain" href={featuredSeries ? `/series/${featuredSeries.slug}` : '/series'}>
+            <div className="kicker kicker-yellow">{featuredSeries ? 'Featured series' : 'Explore our series'}</div>
+            <h3>{featuredSeries?.name || 'WHY INDIA WORKS LIKE THIS'}</h3>
+            <p>{featuredSeries?.description || 'Everyday India looks complicated. This series maps the machinery underneath it.'}</p>
+            <span className="feature-series-link">Explore the series →</span>
+          </Link>
           <div className="featureaside">
             <div className="kicker">What makes Kya Scene Hai?</div>
             <h3>Don’t stop at what happened. Ask why.</h3>

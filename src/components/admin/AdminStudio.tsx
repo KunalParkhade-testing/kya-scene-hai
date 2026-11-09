@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import type { Article, ArticleBlock, Category } from '@/lib/types'
+import type { Article, ArticleBlock, Category, Series } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 import RichTextEditor from '@/components/admin/RichTextEditor'
 import ArticlePreview from '@/components/admin/ArticlePreview'
@@ -23,6 +23,7 @@ type EditorForm = {
   media_folder: string
   is_featured: boolean
   category_id: string
+  series_id: string
   reading_minutes: string
   status: 'draft' | 'published' | 'archived'
   published_at: string | null
@@ -66,6 +67,7 @@ function createEmptyForm(): EditorForm {
   media_folder: '',
   is_featured: false,
   category_id: '',
+  series_id: '',
   reading_minutes: '8',
   status: 'draft',
   published_at: null,
@@ -113,6 +115,9 @@ export default function AdminStudio() {
   const [auth, setAuth] = useState({ email: '', password: '' })
   const [articles, setArticles] = useState<Article[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [series, setSeries] = useState<Series[]>([])
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', description: '' })
+  const [seriesDraft, setSeriesDraft] = useState({ name: '', description: '', is_featured: false })
   const [form, setForm] = useState<EditorForm>(createEmptyForm)
   const [editing, setEditing] = useState<number | null>(null)
   const [editorOpen, setEditorOpen] = useState(true)
@@ -130,16 +135,22 @@ export default function AdminStudio() {
   const closePreview = useCallback(() => setPreviewOpen(false), [])
 
   const loadContent = useCallback(async () => {
-    const [{ data: articleData, error: articlesError }, { data: categoryData, error: categoriesError }] = await Promise.all([
+    const [
+      { data: articleData, error: articlesError },
+      { data: categoryData, error: categoriesError },
+      { data: seriesData, error: seriesError },
+    ] = await Promise.all([
       supabase.from('articles').select('*,categories(name,slug)').order('updated_at', { ascending: false }),
       supabase.from('categories').select('*').order('name'),
+      supabase.from('series').select('*').order('name'),
     ])
-    if (articlesError || categoriesError) {
-      setMessage(articlesError?.message || categoriesError?.message || 'Could not load editorial content.')
+    if (articlesError || categoriesError || seriesError) {
+      setMessage(articlesError?.message || categoriesError?.message || seriesError?.message || 'Could not load editorial content.')
       return
     }
     setArticles((articleData ?? []) as Article[])
     setCategories((categoryData ?? []) as Category[])
+    setSeries((seriesData ?? []) as Series[])
   }, [supabase])
 
   const load = useCallback(async () => {
@@ -153,6 +164,7 @@ export default function AdminStudio() {
     else {
       setArticles([])
       setCategories([])
+      setSeries([])
     }
   }, [loadContent, supabase])
 
@@ -168,6 +180,7 @@ export default function AdminStudio() {
       } else {
         setArticles([])
         setCategories([])
+        setSeries([])
       }
     })
     return () => {
@@ -364,6 +377,62 @@ export default function AdminStudio() {
     setUploading(false)
   }
 
+  async function createCategory() {
+    const name = categoryDraft.name.trim()
+    const slug = slugify(name)
+    if (!name || !slug) {
+      setMessage('Enter a category name using letters or numbers.')
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({ name, slug, description: categoryDraft.description.trim() || null })
+      .select('*')
+      .single()
+    if (error) {
+      setMessage(error.message)
+      setBusy(false)
+      return
+    }
+
+    setCategories(current => [...current, data as Category].sort((a, b) => a.name.localeCompare(b.name)))
+    setForm(current => ({ ...current, category_id: String(data.id) }))
+    setCategoryDraft({ name: '', description: '' })
+    setMessage(`Category “${name}” created and selected.`)
+    setBusy(false)
+  }
+
+  async function createSeries() {
+    const name = seriesDraft.name.trim()
+    const slug = slugify(name)
+    if (!name || !slug) {
+      setMessage('Enter a series name using letters or numbers.')
+      return
+    }
+
+    setBusy(true)
+    setMessage('')
+    const { data, error } = await supabase
+      .from('series')
+      .insert({ name, slug, description: seriesDraft.description.trim() || null, is_featured: seriesDraft.is_featured })
+      .select('*')
+      .single()
+    if (error) {
+      setMessage(error.message)
+      setBusy(false)
+      return
+    }
+
+    setSeries(current => [...current, data as Series].sort((a, b) => a.name.localeCompare(b.name)))
+    setForm(current => ({ ...current, series_id: String(data.id) }))
+    setSeriesDraft({ name: '', description: '', is_featured: false })
+    setMessage(`Series “${name}” created and selected.`)
+    setBusy(false)
+  }
+
   async function save(exitAfterSave = false, statusOverride?: EditorForm['status']) {
     if (!formRef.current?.reportValidity()) return
     if (!form.category_id) {
@@ -393,6 +462,7 @@ export default function AdminStudio() {
       media_folder: mediaFolder,
       is_featured: form.is_featured,
       category_id: form.category_id ? Number(form.category_id) : null,
+      series_id: form.series_id ? Number(form.series_id) : null,
       reading_minutes: Number(form.reading_minutes) || null,
       status,
       body: [
@@ -461,6 +531,7 @@ export default function AdminStudio() {
       media_folder: article.media_folder || slugify(article.slug),
       is_featured: article.is_featured,
       category_id: article.category_id ? String(article.category_id) : '',
+      series_id: article.series_id ? String(article.series_id) : '',
       reading_minutes: String(article.reading_minutes || 8),
       status: article.status,
       published_at: article.published_at || null,
@@ -746,6 +817,38 @@ export default function AdminStudio() {
                     {categories.map(category => <option value={category.id} key={category.id}>{category.name}</option>)}
                   </select>
                 </label>
+                <details className="studio-taxonomy-create">
+                  <summary>＋ Create a category</summary>
+                  <label>Category name
+                    <input value={categoryDraft.name} onChange={event => setCategoryDraft(current => ({ ...current, name: event.target.value }))} maxLength={80} />
+                  </label>
+                  <label>Description
+                    <textarea value={categoryDraft.description} onChange={event => setCategoryDraft(current => ({ ...current, description: event.target.value }))} maxLength={240} rows={2} />
+                  </label>
+                  <button type="button" className="secondary" disabled={busy} onClick={() => void createCategory()}>Create category</button>
+                </details>
+                <label>Series
+                  <select value={form.series_id} onChange={event => setForm({ ...form, series_id: event.target.value })}>
+                    <option value="">No series</option>
+                    {series.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}
+                  </select>
+                </label>
+                <details className="studio-taxonomy-create">
+                  <summary>＋ Create a series</summary>
+                  <label>Series name
+                    <input value={seriesDraft.name} onChange={event => setSeriesDraft(current => ({ ...current, name: event.target.value }))} maxLength={100} />
+                  </label>
+                  <label>Description
+                    <textarea value={seriesDraft.description} onChange={event => setSeriesDraft(current => ({ ...current, description: event.target.value }))} maxLength={500} rows={3} />
+                  </label>
+                  <div className="studio-featured-toggle">
+                    <label>
+                      <input type="checkbox" checked={seriesDraft.is_featured} onChange={event => setSeriesDraft(current => ({ ...current, is_featured: event.target.checked }))} />
+                      Feature this series on the homepage
+                    </label>
+                  </div>
+                  <button type="button" className="secondary" disabled={busy} onClick={() => void createSeries()}>Create series</button>
+                </details>
                 <label>Reading minutes
                   <input type="number" min="1" value={form.reading_minutes} onChange={event => setForm({ ...form, reading_minutes: event.target.value })} />
                 </label>
