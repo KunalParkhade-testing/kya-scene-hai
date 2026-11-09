@@ -285,7 +285,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function Article({params}:{params:Promise<{slug:string}>}) {
   const {slug}=await params;
   const supabase=await createClient();
-  const {data}=await supabase.from('articles').select('id,slug,title,dek,editorial_note,body,hero_text,hero_image,category_id,published_at,updated_at,reading_minutes,seo_description,categories(name,slug)').eq('slug',slug).eq('status','published').maybeSingle();
+  const {data}=await supabase.from('articles').select('id,slug,title,dek,editorial_note,body,hero_text,hero_image,category_id,series_id,published_at,updated_at,reading_minutes,seo_description,categories(name,slug),series(name,slug)').eq('slug',slug).eq('status','published').maybeSingle();
   const story=data as Article|null;
   if(!story) notFound();
 
@@ -378,6 +378,7 @@ export default async function Article({params}:{params:Promise<{slug:string}>}) 
       <div className="article-main-column">
       <Link href="/articles" className="back">← Back to archive</Link>
       <div className="kicker article-kicker">{story.categories?.name}</div>
+      {story.series && <Link className="article-series-link" href={`/series/${story.series.slug}`}>Part of the {story.series.name} series →</Link>}
       <h1>{story.title}</h1>
       {story.dek&&<p className="lede">{story.dek}</p>}
       <div className="meta article-byline">

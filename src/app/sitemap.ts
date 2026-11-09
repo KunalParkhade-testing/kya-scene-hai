@@ -11,9 +11,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL },
     { url: `${SITE_URL}/articles` },
     { url: `${SITE_URL}/topics` },
+    { url: `${SITE_URL}/series` },
     { url: `${SITE_URL}/about` },
   ]
   const articleRoutes: MetadataRoute.Sitemap = []
+  const seriesRoutes: MetadataRoute.Sitemap = []
 
   try {
     const supabase = await createClient()
@@ -46,9 +48,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (data.length < PAGE_SIZE) break
     }
 
-    return [...staticRoutes, ...articleRoutes]
+    const { data: series, error: seriesError } = await supabase.from('series').select('slug').order('slug')
+    if (seriesError) {
+      console.error('Failed to load series for sitemap:', seriesError)
+    } else {
+      seriesRoutes.push(
+        ...(series ?? [])
+          .filter((item) => Boolean(item.slug))
+          .map((item) => ({ url: `${SITE_URL}/series/${item.slug}` })),
+      )
+    }
+
+    return [...staticRoutes, ...articleRoutes, ...seriesRoutes]
   } catch (error) {
     console.error('Failed to generate sitemap:', error)
-    return [...staticRoutes, ...articleRoutes]
+    return [...staticRoutes, ...articleRoutes, ...seriesRoutes]
   }
 }
