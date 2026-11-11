@@ -37,7 +37,7 @@ async function getStories(): Promise<HomepageStory[]> {
     .order('is_featured', { ascending: false })
     .order('published_at', { ascending: false, nullsFirst: false })
     .limit(5)
-  if (error) throw error
+  if (error) throw new Error('Failed to load homepage stories', { cause: error })
   return (data ?? []) as HomepageStory[]
 }
 
@@ -49,7 +49,7 @@ async function getTopicCounts(): Promise<Record<TopicSlug, number>> {
       .select('id, categories!inner(slug)', { count: 'exact', head: true })
       .eq('status', 'published')
       .eq('categories.slug', slug)
-    if (error) throw error
+    if (error) throw new Error(`Failed to load homepage topic count for "${slug}"`, { cause: error })
     return [slug, count ?? 0] as const
   }))
   return Object.fromEntries(results) as Record<TopicSlug, number>
@@ -62,7 +62,7 @@ async function getFeaturedSeries(): Promise<FeaturedSeries | null> {
     .select('slug,name,description')
     .eq('is_featured', true)
     .maybeSingle()
-  if (error) throw error
+  if (error) throw new Error('Failed to load the featured homepage series', { cause: error })
   return data as FeaturedSeries | null
 }
 

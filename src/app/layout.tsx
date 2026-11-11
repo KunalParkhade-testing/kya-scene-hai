@@ -49,8 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `if(localStorage.getItem('ksh-theme')==='dark'){document.documentElement.dataset.theme='dark'}`,
           }}
         />
-        <script
+        <Script
+          id="website-schema"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
         {children}

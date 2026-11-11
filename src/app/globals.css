@@ -2174,6 +2174,21 @@ html[data-theme='dark'] .studio-shell .studio-search-preview strong {
     grid-template-columns: 130px minmax(0, 1fr);
   }
 
+  .studio-topbar {
+    flex-wrap: wrap;
+  }
+
+  .studio-top-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .studio-rail {
+    position: static;
+    min-height: 0;
+  }
+
   .studio-inspector {
     position: static;
     grid-column: 2;
@@ -2211,12 +2226,19 @@ html[data-theme='dark'] .studio-shell .studio-search-preview strong {
 
   .studio-top-actions {
     width: 100%;
-    justify-content: flex-end;
-    overflow-x: auto;
+    justify-content: flex-start;
+    overflow: visible;
+    flex-wrap: wrap;
   }
 
   .studio-top-actions > .studio-save-status {
-    margin-right: auto;
+    flex: 1 1 100%;
+    max-width: none;
+    margin-right: 0;
+  }
+
+  .studio-top-actions > .studio-save-status:empty {
+    display: none;
   }
 
   .studio-top-actions .secondary,
@@ -2247,23 +2269,34 @@ html[data-theme='dark'] .studio-shell .studio-search-preview strong {
   }
 
   .studio-rail {
-    position: static;
-    min-height: 0;
-    flex-direction: row;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
     padding: 8px 10px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
   .studio-rail-label {
-    display: none;
+    display: block;
+    grid-column: 1 / -1;
+    margin: 8px 8px 2px;
+  }
+
+  .studio-rail-label:not(:first-child) {
+    margin-top: 8px;
+  }
+
+  .studio-rail .studio-rail-primary {
+    grid-column: 1 / -1;
   }
 
   .studio-rail button {
-    flex: 0 0 auto;
+    min-width: 0;
     min-height: 38px;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
   }
 
   .studio-workspace {
@@ -2303,6 +2336,22 @@ html[data-theme='dark'] .studio-shell .studio-search-preview strong {
 
   .studio-shell .storytable {
     padding: 38px 16px 50px;
+  }
+
+  .studio-shell .storyrow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .studio-shell .storyrow > div:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .studio-shell .storyrow > div:last-child {
+    width: 100%;
+    flex-wrap: wrap;
   }
 }
 
